@@ -270,7 +270,7 @@ export default function DashboardPage() {
                   type="password"
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
-                  placeholder="Enter admin passcode (default: ptech8000)"
+                  placeholder="Enter admin passcode"
                   required
                   autoFocus
                 />
