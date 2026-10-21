@@ -51,6 +51,19 @@ export default function DashboardPage() {
   const [pwSuccess, setPwSuccess] = useState("");
   const [pwLoading, setPwLoading] = useState(false);
 
+  // Forgot password modal state
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotMethod, setForgotMethod] = useState<"key" | "code">("key");
+  const [recoveryKey, setRecoveryKey] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [newForgotPw, setNewForgotPw] = useState("");
+  const [confirmForgotPw, setConfirmForgotPw] = useState("");
+  const [forgotError, setForgotError] = useState("");
+  const [forgotSuccess, setForgotSuccess] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [codeSentMessage, setCodeSentMessage] = useState("");
+
   const fetchMessages = useCallback(async (key: string) => {
     setLoading(true);
     setAuthError("");
@@ -212,6 +225,82 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleSendResetCode() {
+    setForgotError("");
+    setForgotSuccess("");
+    setCodeSentMessage("");
+    setSendingCode(true);
+
+    try {
+      const res = await fetch("/api/auth/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send_code" }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setForgotError(data.message || data.error || "Failed to send reset code.");
+      } else {
+        setCodeSentMessage(data.message || "Code sent to registered admin email.");
+      }
+    } catch {
+      setForgotError("Network error. Please try using your Master Recovery Key.");
+    } finally {
+      setSendingCode(false);
+    }
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setForgotError("");
+    setForgotSuccess("");
+
+    if (newForgotPw !== confirmForgotPw) {
+      setForgotError("New passcodes do not match.");
+      return;
+    }
+
+    if (newForgotPw.length < 4) {
+      setForgotError("New passcode must be at least 4 characters long.");
+      return;
+    }
+
+    setForgotLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reset",
+          method: forgotMethod,
+          recoveryKey: forgotMethod === "key" ? recoveryKey.trim() : undefined,
+          otpCode: forgotMethod === "code" ? otpCode.trim() : undefined,
+          newPasscode: newForgotPw.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        setForgotError(data.error || "Failed to reset passcode.");
+      } else {
+        setForgotSuccess("Passcode updated! Unlocking dashboard…");
+        const updatedKey = newForgotPw.trim();
+        setPasscode(updatedKey);
+        setTimeout(async () => {
+          setShowForgotModal(false);
+          setForgotSuccess("");
+          await fetchMessages(updatedKey);
+        }, 1200);
+      }
+    } catch {
+      setForgotError("Network error. Please try again.");
+    } finally {
+      setForgotLoading(false);
+    }
+  }
+
   function copyEmail(id: string, email: string) {
     navigator.clipboard.writeText(email);
     setCopiedId(id);
@@ -279,6 +368,36 @@ export default function DashboardPage() {
               <button type="submit" className="button primary" disabled={loading}>
                 {loading ? "VERIFYING…" : "UNLOCK DASHBOARD"}
               </button>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(true);
+                    setForgotError("");
+                    setForgotSuccess("");
+                    setRecoveryKey("");
+                    setOtpCode("");
+                    setNewForgotPw("");
+                    setConfirmForgotPw("");
+                    setCodeSentMessage("");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--accent)",
+                    font: "600 12px 'Space Grotesk', sans-serif",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                    padding: 0,
+                  }}
+                >
+                  Forgot passcode?
+                </button>
+                <span style={{ color: "var(--faint)", font: "11px 'JetBrains Mono', monospace" }}>
+                  P-TECH Admin Access
+                </span>
+              </div>
             </form>
           </div>
         ) : (
@@ -568,6 +687,179 @@ export default function DashboardPage() {
                   type="button"
                   className="button secondary"
                   onClick={() => setShowPasswordModal(false)}
+                >
+                  CANCEL
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showForgotModal && (
+        <div className="lightbox-backdrop" onClick={() => setShowForgotModal(false)}>
+          <div className="dash-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="dash-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <KeyRound size={20} color="var(--accent)" />
+                <h3 style={{ margin: 0, font: "600 22px 'Space Grotesk', sans-serif" }}>
+                  RESET ADMIN PASSCODE
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="dash-modal-close"
+                onClick={() => setShowForgotModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 18, marginBottom: 16 }}>
+              <button
+                type="button"
+                className={`button ${forgotMethod === "key" ? "primary" : "secondary"}`}
+                style={{ flex: 1, padding: "8px 10px", fontSize: 11, justifyContent: "center" }}
+                onClick={() => {
+                  setForgotMethod("key");
+                  setForgotError("");
+                }}
+              >
+                MASTER RECOVERY KEY
+              </button>
+              <button
+                type="button"
+                className={`button ${forgotMethod === "code" ? "primary" : "secondary"}`}
+                style={{ flex: 1, padding: "8px 10px", fontSize: 11, justifyContent: "center" }}
+                onClick={() => {
+                  setForgotMethod("code");
+                  setForgotError("");
+                }}
+              >
+                EMAIL VERIFICATION CODE
+              </button>
+            </div>
+
+            <form onSubmit={handleResetPassword} className="dash-auth-form">
+              {forgotMethod === "key" ? (
+                <>
+                  <p style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.5, margin: "0 0 12px" }}>
+                    Enter your Master Recovery Key (<code style={{ color: "var(--accent)" }}>PTECH-RECOVERY-2026</code>) to set a new passcode immediately.
+                  </p>
+                  <label>
+                    MASTER RECOVERY KEY
+                    <input
+                      type="text"
+                      value={recoveryKey}
+                      onChange={(e) => setRecoveryKey(e.target.value)}
+                      placeholder="e.g. PTECH-RECOVERY-2026"
+                      required
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <p style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.5, margin: "0 0 12px" }}>
+                    Request a 6-digit one-time reset code sent to your registered admin email (<code>ptech8000@gmail.com</code>).
+                  </p>
+                  <div style={{ marginBottom: 12 }}>
+                    <button
+                      type="button"
+                      className="button secondary"
+                      onClick={handleSendResetCode}
+                      disabled={sendingCode}
+                      style={{ width: "100%", justifyContent: "center" }}
+                    >
+                      {sendingCode ? "SENDING CODE…" : "SEND CODE TO PTECH8000@GMAIL.COM"}
+                    </button>
+                  </div>
+                  {codeSentMessage && (
+                    <p style={{ color: "var(--accent)", font: "12px 'JetBrains Mono', monospace", margin: "0 0 12px" }}>
+                      ✓ {codeSentMessage}
+                    </p>
+                  )}
+                  <label>
+                    6-DIGIT VERIFICATION CODE
+                    <input
+                      type="text"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      placeholder="Enter 6-digit code"
+                      required
+                      maxLength={6}
+                    />
+                  </label>
+                </>
+              )}
+
+              <label>
+                NEW PASSCODE
+                <input
+                  type="password"
+                  value={newForgotPw}
+                  onChange={(e) => setNewForgotPw(e.target.value)}
+                  placeholder="At least 4 characters"
+                  required
+                  minLength={4}
+                />
+              </label>
+
+              <label>
+                CONFIRM NEW PASSCODE
+                <input
+                  type="password"
+                  value={confirmForgotPw}
+                  onChange={(e) => setConfirmForgotPw(e.target.value)}
+                  placeholder="Confirm new passcode"
+                  required
+                  minLength={4}
+                />
+              </label>
+
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewForgotPw("ptech8000");
+                    setConfirmForgotPw("ptech8000");
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--muted)",
+                    fontSize: 11,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                    padding: 0,
+                    margin: "-4px 0 6px",
+                  }}
+                >
+                  Quick set: default (ptech8000)
+                </button>
+              </div>
+
+              {forgotError && (
+                <p className="form-error" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <AlertCircle size={14} /> {forgotError}
+                </p>
+              )}
+
+              {forgotSuccess && (
+                <p style={{ color: "var(--success)", font: "600 12px 'JetBrains Mono', monospace", margin: 0 }}>
+                  <CheckCircle2 size={14} style={{ display: "inline", marginRight: 6 }} />
+                  {forgotSuccess}
+                </p>
+              )}
+
+              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                <button type="submit" className="button primary" disabled={forgotLoading} style={{ flex: 1, justifyContent: "center" }}>
+                  {forgotLoading ? "RESETTING…" : "RESET & UNLOCK"}
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setShowForgotModal(false)}
                 >
                   CANCEL
                 </button>

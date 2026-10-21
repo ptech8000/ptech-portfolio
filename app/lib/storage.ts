@@ -19,6 +19,7 @@ const KV_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST
 const SEED_FILE = path.join(process.cwd(), "contact-submissions.jsonl");
 const TMP_FILE = path.join(process.platform === "win32" ? process.cwd() : "/tmp", "contact-submissions.jsonl");
 const PASSCODE_TMP_FILE = path.join(process.platform === "win32" ? process.cwd() : "/tmp", "ptech-admin-passcode.txt");
+const OTP_TMP_FILE = path.join(process.platform === "win32" ? process.cwd() : "/tmp", "ptech-admin-otp.json");
 
 // In-memory cache for fast serverless read/write
 let memoryMessages: ContactMessage[] | null = null;
@@ -92,6 +93,82 @@ export async function setAdminPasscode(newPasscode: string): Promise<boolean> {
     // Ignore on read-only system
   }
 
+  return true;
+}
+
+export const DEFAULT_MASTER_RECOVERY_KEY = "PTECH-RECOVERY-2026";
+
+export function getMasterRecoveryKey(): string {
+  return (process.env.ADMIN_RECOVERY_KEY || DEFAULT_MASTER_RECOVERY_KEY).trim();
+}
+
+export async function verifyRecoveryKey(key: string): Promise<boolean> {
+  const clean = key.trim();
+  if (!clean) return false;
+  const master = getMasterRecoveryKey();
+  return clean.toLowerCase() === master.toLowerCase();
+}
+
+type ResetOtp = {
+  code: string;
+  expiresAt: number;
+};
+let memoryOtp: ResetOtp | null = null;
+
+export async function createAndSaveOtp(): Promise<string> {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const data: ResetOtp = { code, expiresAt: Date.now() + 15 * 60 * 1000 };
+  memoryOtp = data;
+
+  if (KV_URL && KV_TOKEN) {
+    await kvCommand("set", "ptech_admin_otp", JSON.stringify(data));
+  }
+
+  try {
+    await writeFile(OTP_TMP_FILE, JSON.stringify(data), "utf8");
+  } catch {
+    // Read-only filesystem fallback
+  }
+
+  return code;
+}
+
+export async function verifyResetOtp(code: string): Promise<boolean> {
+  const clean = code.trim();
+  if (!clean) return false;
+
+  let target: ResetOtp | null = memoryOtp;
+  if (!target && KV_URL && KV_TOKEN) {
+    const fromKv = await kvCommand("get", "ptech_admin_otp");
+    if (typeof fromKv === "string" && fromKv) {
+      try {
+        target = JSON.parse(fromKv);
+      } catch {
+        // malformed
+      }
+    }
+  }
+
+  if (!target) {
+    try {
+      if (existsSync(OTP_TMP_FILE)) {
+        const raw = await readFile(OTP_TMP_FILE, "utf8");
+        target = JSON.parse(raw);
+      }
+    } catch {
+      // file read error
+    }
+  }
+
+  if (!target) return false;
+  if (Date.now() > target.expiresAt) return false;
+  if (target.code !== clean) return false;
+
+  // Invalidate OTP after use
+  memoryOtp = null;
+  if (KV_URL && KV_TOKEN) {
+    await kvCommand("del", "ptech_admin_otp");
+  }
   return true;
 }
 
