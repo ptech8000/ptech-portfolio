@@ -744,15 +744,15 @@ export default function DashboardPage() {
               {forgotMethod === "key" ? (
                 <>
                   <p style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.5, margin: "0 0 12px" }}>
-                    Enter your Master Recovery Key (<code style={{ color: "var(--accent)" }}>PTECH-RECOVERY-2026</code>) to set a new passcode immediately.
+                    Enter your Master Recovery Key to set a new passcode immediately.
                   </p>
                   <label>
                     MASTER RECOVERY KEY
                     <input
-                      type="text"
+                      type="password"
                       value={recoveryKey}
                       onChange={(e) => setRecoveryKey(e.target.value)}
-                      placeholder="e.g. PTECH-RECOVERY-2026"
+                      placeholder="Enter Master Recovery Key"
                       required
                     />
                   </label>
@@ -760,7 +760,7 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <p style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.5, margin: "0 0 12px" }}>
-                    Request a 6-digit one-time reset code sent to your registered admin email (<code>ptech8000@gmail.com</code>).
+                    Request a 6-digit one-time reset code sent to the registered admin email.
                   </p>
                   <div style={{ marginBottom: 12 }}>
                     <button
@@ -770,7 +770,7 @@ export default function DashboardPage() {
                       disabled={sendingCode}
                       style={{ width: "100%", justifyContent: "center" }}
                     >
-                      {sendingCode ? "SENDING CODE…" : "SEND CODE TO PTECH8000@GMAIL.COM"}
+                      {sendingCode ? "SENDING CODE…" : "SEND VERIFICATION CODE"}
                     </button>
                   </div>
                   {codeSentMessage && (
@@ -815,29 +815,6 @@ export default function DashboardPage() {
                   minLength={4}
                 />
               </label>
-
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setNewForgotPw("ptech8000");
-                    setConfirmForgotPw("ptech8000");
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--muted)",
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                    padding: 0,
-                    margin: "-4px 0 6px",
-                  }}
-                >
-                  Quick set: default (ptech8000)
-                </button>
-              </div>
 
               {forgotError && (
                 <p className="form-error" style={{ display: "flex", alignItems: "center", gap: 6 }}>

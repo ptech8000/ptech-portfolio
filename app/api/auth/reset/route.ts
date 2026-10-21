@@ -4,7 +4,6 @@ import {
   verifyRecoveryKey,
   createAndSaveOtp,
   verifyResetOtp,
-  DEFAULT_MASTER_RECOVERY_KEY,
 } from "../../../lib/storage";
 
 export const runtime = "nodejs";
@@ -54,7 +53,7 @@ export async function POST(req: Request) {
           {
             ok: false,
             error: "email_not_configured",
-            message: `Email delivery is not configured on this server. Use your Master Recovery Key (${DEFAULT_MASTER_RECOVERY_KEY}) to reset your passcode immediately.`,
+            message: "Email delivery is not configured on this server. Please use your Master Recovery Key to reset your passcode.",
           },
           { status: 200 }
         );
@@ -84,7 +83,7 @@ export async function POST(req: Request) {
             {
               ok: false,
               error: "email_failed",
-              message: `Could not send email via Resend. Use your Master Recovery Key (${DEFAULT_MASTER_RECOVERY_KEY}) to reset immediately.`,
+              message: "Could not send verification email. Please use your Master Recovery Key to reset.",
             },
             { status: 200 }
           );
@@ -92,7 +91,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({
           ok: true,
-          message: `A 6-digit verification code was sent to ${toEmail}.`,
+          message: "A 6-digit verification code was sent to the registered admin email.",
         });
       } catch (err) {
         console.error("Resend request error:", err);
@@ -100,7 +99,7 @@ export async function POST(req: Request) {
           {
             ok: false,
             error: "email_network_error",
-            message: `Network error sending email. Use your Master Recovery Key (${DEFAULT_MASTER_RECOVERY_KEY}) to reset immediately.`,
+            message: "Network error sending email. Please use your Master Recovery Key to reset.",
           },
           { status: 200 }
         );
@@ -175,3 +174,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unexpected error occurred." }, { status: 500 });
   }
 }
+
