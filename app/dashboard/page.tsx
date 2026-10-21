@@ -15,6 +15,9 @@ import {
   Check,
   Inbox,
   Clock,
+  KeyRound,
+  X,
+  AlertCircle,
 } from "lucide-react";
 
 type ContactMessage = {
@@ -38,6 +41,15 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Change password modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
 
   const fetchMessages = useCallback(async (key: string) => {
     setLoading(true);
@@ -96,39 +108,107 @@ export default function DashboardPage() {
 
   async function updateStatus(id: string, status: ContactMessage["status"]) {
     if (!savedKey) return;
-    const res = await fetch("/api/contact", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-key": savedKey },
-      body: JSON.stringify({ id, status }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data.messages)) setMessages(data.messages);
+    // Optimistic local update
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)));
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-key": savedKey },
+        body: JSON.stringify({ id, status }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.messages)) setMessages(data.messages);
+      }
+    } catch {
+      // Revert if error
+      fetchMessages(savedKey);
     }
   }
 
   async function markAllRead() {
     if (!savedKey) return;
-    const res = await fetch("/api/contact", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "x-admin-key": savedKey },
-      body: JSON.stringify({ markAllRead: true }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data.messages)) setMessages(data.messages);
+    // Optimistic update
+    setMessages((prev) => prev.map((m) => (m.status === "unread" ? { ...m, status: "read" } : m)));
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-key": savedKey },
+        body: JSON.stringify({ markAllRead: true }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.messages)) setMessages(data.messages);
+      }
+    } catch {
+      fetchMessages(savedKey);
     }
   }
 
   async function deleteMessage(id: string) {
     if (!savedKey) return;
-    const res = await fetch(`/api/contact?id=${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      headers: { "x-admin-key": savedKey },
-    });
-    if (res.ok) {
+    // Optimistic remove
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+
+    try {
+      const res = await fetch(`/api/contact?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "x-admin-key": savedKey },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.messages)) setMessages(data.messages);
+      }
+    } catch {
+      fetchMessages(savedKey);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwError("");
+    setPwSuccess("");
+
+    if (newPw !== confirmPw) {
+      setPwError("New passcodes do not match.");
+      return;
+    }
+    if (newPw.length < 4) {
+      setPwError("New passcode must be at least 4 characters.");
+      return;
+    }
+
+    setPwLoading(true);
+    try {
+      const res = await fetch("/api/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPasscode: currentPw,
+          newPasscode: newPw,
+        }),
+      });
       const data = await res.json();
-      if (Array.isArray(data.messages)) setMessages(data.messages);
+      if (!res.ok) {
+        setPwError(data.error || "Failed to update passcode.");
+      } else {
+        setPwSuccess("Passcode updated successfully!");
+        setSavedKey(newPw);
+        sessionStorage.setItem("ptech_admin_key", newPw);
+        setCurrentPw("");
+        setNewPw("");
+        setConfirmPw("");
+        setTimeout(() => {
+          setShowPasswordModal(false);
+          setPwSuccess("");
+        }, 1500);
+      }
+    } catch {
+      setPwError("Network error. Please try again.");
+    } finally {
+      setPwLoading(false);
     }
   }
 
@@ -221,6 +301,18 @@ export default function DashboardPage() {
                   disabled={loading}
                 >
                   <RefreshCw size={15} /> {loading ? "SYNCING…" : "REFRESH"}
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => {
+                    setPwError("");
+                    setPwSuccess("");
+                    setCurrentPw(savedKey || "");
+                    setShowPasswordModal(true);
+                  }}
+                >
+                  <KeyRound size={15} /> CHANGE PASSCODE
                 </button>
                 {unreadCount > 0 && (
                   <button type="button" className="button secondary" onClick={markAllRead}>
@@ -398,8 +490,94 @@ export default function DashboardPage() {
           </>
         )}
       </section>
+
+      {/* Change Passcode Modal */}
+      {showPasswordModal && (
+        <div className="lightbox-backdrop" onClick={() => setShowPasswordModal(false)}>
+          <div className="dash-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="dash-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <KeyRound size={20} color="var(--accent)" />
+                <h3 style={{ margin: 0, font: "600 22px 'Space Grotesk', sans-serif" }}>
+                  CHANGE ADMIN PASSCODE
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="dash-modal-close"
+                onClick={() => setShowPasswordModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangePassword} className="dash-auth-form" style={{ marginTop: 16 }}>
+              <label>
+                CURRENT PASSCODE
+                <input
+                  type="password"
+                  value={currentPw}
+                  onChange={(e) => setCurrentPw(e.target.value)}
+                  placeholder="Enter current passcode"
+                  required
+                />
+              </label>
+
+              <label>
+                NEW PASSCODE
+                <input
+                  type="password"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  placeholder="At least 4 characters"
+                  required
+                  minLength={4}
+                />
+              </label>
+
+              <label>
+                CONFIRM NEW PASSCODE
+                <input
+                  type="password"
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  placeholder="Confirm new passcode"
+                  required
+                  minLength={4}
+                />
+              </label>
+
+              {pwError && (
+                <p className="form-error" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <AlertCircle size={14} /> {pwError}
+                </p>
+              )}
+
+              {pwSuccess && (
+                <p style={{ color: "var(--success)", font: "600 12px 'JetBrains Mono', monospace", margin: 0 }}>
+                  <CheckCircle2 size={14} style={{ display: "inline", marginRight: 6 }} />
+                  {pwSuccess}
+                </p>
+              )}
+
+              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                <button type="submit" className="button primary" disabled={pwLoading} style={{ flex: 1 }}>
+                  {pwLoading ? "UPDATING…" : "UPDATE PASSCODE"}
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setShowPasswordModal(false)}
+                >
+                  CANCEL
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </main>
   );
 }
-

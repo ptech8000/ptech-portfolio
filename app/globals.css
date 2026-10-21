@@ -738,8 +738,14 @@ a:hover .vis-icon { transform: scale(1.1) rotate(-3deg); }
 .dash-msg-footer { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 6px; }
 .dash-delete-btn:hover { border-color: #f87171 !important; color: #f87171 !important; }
 
+.dash-modal { width: min(480px, calc(100% - 32px)); background: var(--surface); border: 1px solid var(--border); padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+.dash-modal-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+.dash-modal-close { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 4px; display: grid; place-items: center; }
+.dash-modal-close:hover { color: var(--text); }
+
 @media (max-width: 640px) {
   .dash-auth-card { padding: 26px 20px; }
+  .dash-modal { padding: 24px 18px; }
   .dash-search { min-width: 100%; max-width: 100%; }
   .dash-msg-card { padding: 20px 18px; }
   .dash-msg-footer .button, .dash-actions .button { width: 100%; justify-content: center; }

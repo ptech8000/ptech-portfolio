@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
-import { readFile, writeFile, appendFile } from "fs/promises";
-import path from "path";
 import crypto from "crypto";
+import {
+  ContactMessage,
+  getAdminPasscode,
+  getMessages,
+  saveMessages,
+  addMessage,
+} from "../../lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-export type ContactMessage = {
-  id: string;
-  timestamp: string;
-  name: string;
-  email: string;
-  topic: string;
-  message: string;
-  status: "unread" | "read" | "replied";
-};
-
-const LOG_PATH = path.join(process.cwd(), "contact-submissions.jsonl");
-const ADMIN_PASSCODE = process.env.ADMIN_PASSWORD || "ptech8000";
 
 const MAX = { name: 100, email: 200, topic: 80, message: 4000 };
 const WINDOW_MS = 10 * 60 * 1000;
@@ -37,86 +29,39 @@ function limited(ip: string) {
   return recent.length > MAX_PER_WINDOW;
 }
 
-function isAuthorized(req: Request) {
+async function isAuthorized(req: Request) {
   const key = req.headers.get("x-admin-key") ?? "";
-  return key === ADMIN_PASSCODE;
-}
-
-async function readMessages(): Promise<ContactMessage[]> {
-  try {
-    const raw = await readFile(LOG_PATH, "utf8");
-    const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
-    let mutated = false;
-    const parsed: ContactMessage[] = [];
-
-    for (const line of lines) {
-      try {
-        const obj = JSON.parse(line);
-        const id =
-          typeof obj.id === "string" && obj.id
-            ? obj.id
-            : crypto
-                .createHash("sha1")
-                .update(`${obj.timestamp ?? ""}:${obj.email ?? ""}:${obj.message ?? ""}`)
-                .digest("hex")
-                .slice(0, 12);
-        const status: ContactMessage["status"] =
-          obj.status === "read" || obj.status === "replied" ? obj.status : "unread";
-        if (!obj.id || !obj.status) mutated = true;
-        parsed.push({
-          id,
-          timestamp: String(obj.timestamp ?? new Date().toISOString()),
-          name: String(obj.name ?? "Anonymous"),
-          email: String(obj.email ?? ""),
-          topic: String(obj.topic ?? "General enquiry"),
-          message: String(obj.message ?? ""),
-          status,
-        });
-      } catch {
-        // Ignore malformed line
-      }
-    }
-
-    if (mutated) {
-      await writeMessages(parsed);
-    }
-
-    return parsed.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  } catch {
-    return [];
-  }
-}
-
-async function writeMessages(messages: ContactMessage[]) {
-  const content = messages.map((m) => JSON.stringify(m)).join("\n") + (messages.length ? "\n" : "");
-  await writeFile(LOG_PATH, content, "utf8");
+  const passcode = await getAdminPasscode();
+  return Boolean(key && key === passcode);
 }
 
 export async function GET(req: Request) {
-  if (!isAuthorized(req)) {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const messages = await readMessages();
+  const messages = await getMessages();
   return NextResponse.json({ messages });
 }
 
 export async function PATCH(req: Request) {
-  if (!isAuthorized(req)) {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {
     const body = await req.json();
-    const messages = await readMessages();
+    const messages = await getMessages();
+
     if (body.markAllRead) {
       const updated = messages.map((m) => (m.status === "unread" ? { ...m, status: "read" as const } : m));
-      await writeMessages(updated);
+      await saveMessages(updated);
       return NextResponse.json({ ok: true, messages: updated });
     }
+
     const id = String(body.id ?? "");
     const status: ContactMessage["status"] =
       body.status === "read" || body.status === "replied" || body.status === "unread" ? body.status : "read";
     const updated = messages.map((m) => (m.id === id ? { ...m, status } : m));
-    await writeMessages(updated);
+    await saveMessages(updated);
     return NextResponse.json({ ok: true, messages: updated });
   } catch {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
@@ -124,15 +69,15 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!isAuthorized(req)) {
+  if (!(await isAuthorized(req))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
-    const messages = await readMessages();
+    const messages = await getMessages();
     const updated = id ? messages.filter((m) => m.id !== id) : messages;
-    await writeMessages(updated);
+    await saveMessages(updated);
     return NextResponse.json({ ok: true, messages: updated });
   } catch {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
@@ -175,11 +120,8 @@ export async function POST(req: Request) {
     status: "unread",
   };
 
-  try {
-    await appendFile(LOG_PATH, JSON.stringify(entry) + "\n", "utf8");
-  } catch {
-    // Ignore on read-only filesystem
-  }
+  // Save to persistent storage
+  await addMessage(entry);
 
   const to = process.env.CONTACT_TO_EMAIL || "ptech8000@gmail.com";
   const apiKey = process.env.RESEND_API_KEY;

@@ -14,11 +14,17 @@ const moved = {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async redirects() {
-    return Object.entries(moved).map(([slug, destination]) => ({
+    const list = Object.entries(moved).map(([slug, destination]) => ({
       source: `/work/${slug}`,
       destination,
       permanent: true,
     }));
+    list.push({
+      source: "/admin",
+      destination: "/dashboard",
+      permanent: false,
+    });
+    return list;
   },
 };
 
