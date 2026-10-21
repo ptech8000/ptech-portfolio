@@ -8,7 +8,6 @@ const project: Project = {
   "icon": "grad",
   "hue": "#2563eb",
   "built": true,
-  "flagship": false,
   "image": "/projects/ptech-cbt-system/cbt-dashboard-hero.png",
   "imageAlt": "P-TECH CBT System Admin Dashboard running live on a Raspberry Pi 3 Model B+ showing student counts, question bank, active exams, submissions, recent results, and live test monitoring",
   "gallery": [
