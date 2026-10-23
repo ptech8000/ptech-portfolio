@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, Github, Play } from "lucide-react";
 import Visual from "../../components/Visual";
 import GalleryLightbox from "../../components/GalleryLightbox";
+import ProjectReviews from "../../components/ProjectReviews";
 import { projects, bySlug } from "../../data/projects";
 
 export function generateStaticParams() {
@@ -65,6 +66,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           {project.gallery && project.gallery.length > 0 && <a href="#gallery">Build Photos</a>}
           <a href="#testing">Testing</a>
           <a href="#future">{project.futureLabel === "AVAILABLE PACKAGES" ? "Packages" : project.futureLabel ? "Milestones" : "Future"}</a>
+          <a href="#reviews">Reviews</a>
         </aside>
         <article>
           <section id="overview"><span className="eyebrow">OVERVIEW</span><h2>FROM PROBLEM TO SYSTEM</h2><p>{project.summary}</p>{project.facts && <div className="facts">{project.facts.map(([k, v]) => <div key={k}><span>{k}</span><strong>{v}</strong></div>)}</div>}</section>
@@ -100,6 +102,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             )}
           </section>
           <section id="future"><span className="eyebrow">{project.futureLabel ?? "FUTURE DEVELOPMENT"}</span><h2>{project.futureHeading ?? "NEXT ENGINEERING STEPS"}</h2><ul className="future-list">{project.future.map((item) => <li key={item}>{item}</li>)}</ul></section>
+          <ProjectReviews projectSlug={project.slug} projectTitle={project.title} />
           {project.related && project.related.length > 0 && (
             <section id="related"><span className="eyebrow">RELATED PROJECTS</span><div className="spec-grid">{project.related.map((r) => bySlug[r] && <Link key={r} href={`/work/${r}`}>{bySlug[r].title} →</Link>)}</div></section>
           )}
