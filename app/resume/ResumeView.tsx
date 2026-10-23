@@ -93,7 +93,7 @@ export default function ResumeView() {
           {/* Header */}
           <header className="resume-header">
             <div className="resume-header-top">
-              <div>
+              <div className="resume-header-info">
                 <h1 className="resume-name">PROMISE AJAYI</h1>
                 <div className="resume-role">
                   Robotics, Embedded Systems &amp; 3D Prototyping Engineer
@@ -101,6 +101,14 @@ export default function ResumeView() {
                 <p className="resume-sub-role">
                   Founder &amp; Lead Engineer at <strong>P-TECH</strong> (Precision Technology, Engineering &amp; Creative Hardware). Architecting intelligent autonomous robotics, medical infusion hardware, edge AI systems, and self-hosted local server appliances.
                 </p>
+              </div>
+
+              <div className="resume-photo-wrap">
+                <img
+                  src="/founder-promise-ajayi.jpg"
+                  alt="Promise Ajayi — Founder &amp; Lead Engineer at P-TECH"
+                  className="resume-photo"
+                />
               </div>
             </div>
 

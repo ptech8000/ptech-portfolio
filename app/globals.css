@@ -1070,6 +1070,25 @@ a:hover .vis-icon { transform: scale(1.1) rotate(-3deg); }
   flex-wrap: wrap;
 }
 
+.resume-header-info {
+  flex: 1;
+  min-width: 260px;
+}
+
+.resume-photo-wrap {
+  flex-shrink: 0;
+}
+
+.resume-photo {
+  width: 104px;
+  height: 104px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  display: block;
+}
+
 .resume-name {
   font: 700 clamp(28px, 4vw, 36px) "Space Grotesk", sans-serif;
   letter-spacing: -0.04em;
@@ -1397,6 +1416,19 @@ a:hover .vis-icon { transform: scale(1.1) rotate(-3deg); }
     font-size: 9pt !important;
   }
 
+  .resume-photo-wrap {
+    flex-shrink: 0 !important;
+  }
+
+  .resume-photo {
+    width: 78px !important;
+    height: 78px !important;
+    border-radius: 6px !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: none !important;
+    display: block !important;
+  }
+
   .resume-contact-list {
     margin-top: 8px !important;
     padding-top: 8px !important;
@@ -1588,7 +1620,16 @@ a:hover .vis-icon { transform: scale(1.1) rotate(-3deg); }
     grid-template-columns: 1fr;
   }
   .resume-header-top {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .resume-header-info {
+    min-width: 0;
+  }
+  .resume-photo {
+    width: 76px;
+    height: 76px;
   }
   .resume-contact-list {
     grid-template-columns: 1fr;
