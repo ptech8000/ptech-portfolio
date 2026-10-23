@@ -8,10 +8,10 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ptech-portfolio.vercel.app"),
+  metadataBase: new URL("https://ptech-site.vercel.app"),
   title: "P-TECH — Promise Ajayi | Robotics, Embedded Systems, 3D Printing & Solar Power",
   description:
-    "Portfolio of Promise Ajayi (P-TECH): 3D Printing & Robotics Engineer building embedded systems, autonomous robots, portable solar power stations, school CBT servers, and IoT hardware.",
+    "Portfolio and Engineering Resume of Promise Ajayi (P-TECH): 3D Printing & Robotics Engineer building embedded systems, autonomous robots, portable solar power stations, school CBT servers, and IoT hardware.",
   openGraph: {
     title: "P-TECH — Promise Ajayi | Precision Technology, Engineering & Creative Hardware",
     description:

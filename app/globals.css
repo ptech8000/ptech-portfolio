@@ -952,3 +952,645 @@ a:hover .vis-icon { transform: scale(1.1) rotate(-3deg); }
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ==========================================================================
+   RESUME / CV SYSTEM & PRINT STYLES
+   ========================================================================== */
+.resume-page {
+  padding: 30px 0 100px;
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+.resume-toolbar {
+  position: sticky;
+  top: 90px;
+  z-index: 40;
+  background: rgba(16, 19, 24, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 20px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.resume-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 500 12px "JetBrains Mono", monospace;
+  color: var(--muted);
+}
+
+.resume-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.resume-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.resume-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 15px;
+  font: 600 11px "JetBrains Mono", monospace;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.resume-btn:hover {
+  border-color: var(--accent);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.resume-btn.primary {
+  background: var(--accent);
+  color: #080a0d;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+
+.resume-btn.primary:hover {
+  background: #2fe0ff;
+  border-color: #2fe0ff;
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.35);
+}
+
+.resume-btn.copied {
+  background: var(--success);
+  color: #080a0d;
+  border-color: var(--success);
+}
+
+/* Document Sheet */
+.resume-sheet {
+  max-width: 960px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 48px 56px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.resume-header {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 26px;
+  margin-bottom: 30px;
+}
+
+.resume-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.resume-name {
+  font: 700 clamp(28px, 4vw, 36px) "Space Grotesk", sans-serif;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.resume-role {
+  font: 600 15px "JetBrains Mono", monospace;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.resume-sub-role {
+  font: 13.5px Inter, sans-serif;
+  color: var(--muted);
+  max-width: 620px;
+  line-height: 1.5;
+}
+
+.resume-contact-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 24px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.resume-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 12px "JetBrains Mono", monospace;
+  color: var(--muted);
+  transition: color 0.15s ease;
+}
+
+.resume-contact-item a {
+  color: var(--muted);
+  transition: color 0.15s;
+}
+
+.resume-contact-item a:hover {
+  color: var(--accent);
+}
+
+.resume-contact-item svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+/* Sections */
+.resume-section {
+  margin-bottom: 34px;
+}
+
+.resume-section-heading {
+  font: 700 13px "JetBrains Mono", monospace;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.resume-summary-text {
+  font: 14px/1.7 Inter, sans-serif;
+  color: var(--text);
+  margin: 0;
+}
+
+/* Experience items */
+.resume-exp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.resume-exp-item {
+  position: relative;
+}
+
+.resume-exp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.resume-exp-title {
+  font: 700 16px "Space Grotesk", sans-serif;
+  color: var(--text);
+}
+
+.resume-exp-company {
+  font: 600 13px "JetBrains Mono", monospace;
+  color: var(--accent);
+}
+
+.resume-exp-meta {
+  font: 12px "JetBrains Mono", monospace;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.resume-exp-bullets {
+  margin: 10px 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font: 13.5px/1.6 Inter, sans-serif;
+  color: #cbd5e1;
+}
+
+.resume-exp-bullets li {
+  padding-left: 4px;
+}
+
+.resume-exp-bullets li strong {
+  color: var(--text);
+}
+
+/* Skills matrix */
+.resume-skills-matrix {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.resume-skill-group {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  border-radius: 4px;
+}
+
+.resume-skill-group h4 {
+  font: 600 12px "JetBrains Mono", monospace;
+  color: var(--accent);
+  margin: 0 0 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.resume-skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.resume-skill-tag {
+  display: inline-block;
+  font: 500 11px Inter, sans-serif;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 3px;
+  color: var(--text);
+}
+
+/* Projects grid */
+.resume-projects-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.resume-project-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.resume-project-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.resume-project-name {
+  font: 700 14px "Space Grotesk", sans-serif;
+  color: var(--text);
+}
+
+.resume-project-link {
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 11px "JetBrains Mono", monospace;
+  transition: opacity 0.2s;
+}
+
+.resume-project-link:hover {
+  opacity: 0.8;
+}
+
+.resume-project-desc {
+  font: 12.5px/1.55 Inter, sans-serif;
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+
+.resume-project-tech {
+  font: 500 10.5px "JetBrains Mono", monospace;
+  color: var(--faint);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 8px;
+}
+
+/* Certifications */
+.resume-certs-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.resume-cert-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.resume-cert-title {
+  font: 600 13px "Space Grotesk", sans-serif;
+  color: var(--text);
+}
+
+.resume-cert-issuer {
+  font: 11.5px "JetBrains Mono", monospace;
+  color: var(--accent);
+}
+
+.resume-cert-desc {
+  font: 11.5px Inter, sans-serif;
+  color: var(--faint);
+}
+
+/* ==========================================================================
+   PRINT STYLES FOR RESUME (HIGH-CONTRAST PROFESSIONAL PAPER / PDF LAYOUT)
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm 12mm;
+  }
+  
+  *, *::before, *::after {
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .navwrap,
+  .footer,
+  .resume-toolbar,
+  .no-print {
+    display: none !important;
+  }
+
+  .resume-page {
+    padding: 0 !important;
+    background: #ffffff !important;
+    min-height: auto !important;
+  }
+
+  .resume-sheet {
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+  }
+
+  .resume-header {
+    border-bottom: 2px solid #111827 !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .resume-name {
+    color: #000000 !important;
+    font-size: 22pt !important;
+    margin-bottom: 2px !important;
+  }
+
+  .resume-role {
+    color: #0369a1 !important;
+    font-size: 10pt !important;
+    margin-bottom: 4px !important;
+  }
+
+  .resume-sub-role {
+    color: #374151 !important;
+    font-size: 9pt !important;
+  }
+
+  .resume-contact-list {
+    margin-top: 8px !important;
+    padding-top: 8px !important;
+    border-top: 1px solid #e5e7eb !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px 12px !important;
+  }
+
+  .resume-contact-item {
+    font-size: 8.5pt !important;
+    color: #374151 !important;
+  }
+
+  .resume-contact-item a {
+    color: #111827 !important;
+    text-decoration: none !important;
+  }
+
+  .resume-contact-item svg {
+    color: #0369a1 !important;
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  .resume-section {
+    margin-bottom: 14px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .resume-section-heading {
+    color: #0369a1 !important;
+    border-bottom: 1.5px solid #0369a1 !important;
+    font-size: 9.5pt !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 3px !important;
+  }
+
+  .resume-summary-text {
+    font-size: 9pt !important;
+    line-height: 1.4 !important;
+    color: #1f2937 !important;
+  }
+
+  .resume-exp-list {
+    gap: 12px !important;
+  }
+
+  .resume-exp-item {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .resume-exp-title {
+    color: #000000 !important;
+    font-size: 10.5pt !important;
+  }
+
+  .resume-exp-company {
+    color: #0369a1 !important;
+    font-size: 9pt !important;
+  }
+
+  .resume-exp-meta {
+    color: #4b5563 !important;
+    font-size: 8pt !important;
+  }
+
+  .resume-exp-bullets {
+    margin: 4px 0 0 14px !important;
+    gap: 3px !important;
+    font-size: 8.5pt !important;
+    line-height: 1.35 !important;
+    color: #1f2937 !important;
+  }
+
+  .resume-exp-bullets li strong {
+    color: #000000 !important;
+  }
+
+  .resume-skills-matrix {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .resume-skill-group {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    padding: 8px 10px !important;
+  }
+
+  .resume-skill-group h4 {
+    color: #0369a1 !important;
+    font-size: 8pt !important;
+    margin-bottom: 4px !important;
+  }
+
+  .resume-skill-tag {
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    color: #111827 !important;
+    font-size: 7.5pt !important;
+    padding: 1px 5px !important;
+  }
+
+  .resume-projects-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .resume-project-card {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    padding: 8px 10px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .resume-project-name {
+    color: #000000 !important;
+    font-size: 9pt !important;
+  }
+
+  .resume-project-link {
+    display: none !important;
+  }
+
+  .resume-project-desc {
+    color: #374151 !important;
+    font-size: 8pt !important;
+    line-height: 1.3 !important;
+    margin-bottom: 4px !important;
+  }
+
+  .resume-project-tech {
+    color: #4b5563 !important;
+    font-size: 7.5pt !important;
+    border-top: 1px solid #e5e7eb !important;
+    padding-top: 4px !important;
+  }
+
+  .resume-certs-list {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .resume-cert-item {
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    padding: 6px 8px !important;
+  }
+
+  .resume-cert-title {
+    color: #000000 !important;
+    font-size: 8.5pt !important;
+  }
+
+  .resume-cert-issuer {
+    color: #0369a1 !important;
+    font-size: 8pt !important;
+  }
+
+  .resume-cert-desc {
+    color: #4b5563 !important;
+    font-size: 7.5pt !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .resume-sheet {
+    padding: 24px 18px;
+  }
+  .resume-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    top: 70px;
+  }
+  .resume-toolbar-actions {
+    justify-content: flex-start;
+  }
+  .resume-skills-matrix,
+  .resume-projects-grid {
+    grid-template-columns: 1fr;
+  }
+  .resume-header-top {
+    flex-direction: column;
+  }
+  .resume-contact-list {
+    grid-template-columns: 1fr;
+  }
+}

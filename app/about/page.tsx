@@ -117,8 +117,11 @@ export default function About() {
               Specializing in end-to-end hardware product development — from schematic capture, embedded C/C++ and Python firmware, and custom 3D-printed enclosures to real-time web/mobile mission dashboards, edge computer vision, and STEM robotics education.
             </p>
             <div className="founder-links">
+              <Link className="button primary" href="/resume">
+                VIEW / PRINT RESUME (CV) <ArrowUpRight size={16} />
+              </Link>
               <a
-                className="button primary"
+                className="button secondary"
                 href="https://www.linkedin.com/in/ajayi-promise/"
                 target="_blank"
                 rel="noreferrer"
