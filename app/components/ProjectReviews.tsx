@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Star, MessageSquarePlus, X, Send, CheckCircle2, ShieldCheck } from "lucide-react";
-import { reviews } from "../data/reviews";
+import { useState, useEffect } from "react";
+import { Star, MessageSquarePlus, X, Send, CheckCircle2, ShieldCheck, Clock } from "lucide-react";
+import type { StoredReview } from "../lib/storage";
 
 export default function ProjectReviews({
   projectSlug,
@@ -11,19 +11,38 @@ export default function ProjectReviews({
   projectSlug: string;
   projectTitle: string;
 }) {
+  const [projectReviews, setProjectReviews] = useState<StoredReview[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [org, setOrg] = useState("");
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
-  const [highlight, setHighlight] = useState("");
+  const [headline, setHeadline] = useState("");
   const [feedback, setFeedback] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
 
-  const projectReviews = reviews.filter((r) => r.projectSlug === projectSlug);
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/reviews?slug=${encodeURIComponent(projectSlug)}`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (active && Array.isArray(data.reviews)) {
+          setProjectReviews(data.reviews);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [projectSlug]);
 
   async function handleSubmitReview(e: React.FormEvent) {
     e.preventDefault();
@@ -32,22 +51,29 @@ export default function ProjectReviews({
 
     try {
       const payload = {
+        projectSlug,
+        projectTitle,
+        rating,
         name: name.trim(),
-        email: email.trim() || "anonymous@client.ptech",
-        topic: `[Project Review: ${projectTitle}] ${rating}★`,
-        message: `Project Review Submission:\n\nProject: ${projectTitle} (/work/${projectSlug})\nRating: ${rating}/5 Stars\nReviewer: ${name.trim()}\nRole/Org: ${org.trim() || "Independent / Client"}\nHeadline: "${highlight.trim()}"\n\nReview:\n${feedback.trim()}`,
+        email: email.trim() || undefined,
+        org: org.trim() || undefined,
+        headline: headline.trim(),
+        review: feedback.trim(),
       };
 
-      const res = await fetch("/api/contact", {
+      const res = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
+      const data = await res.json();
+
+      if (res.ok && data.review) {
+        setProjectReviews((prev) => [data.review, ...prev]);
         setSubmitted(true);
       } else {
-        setError("Could not submit feedback. Please reach out directly via WhatsApp or Email.");
+        setError(data.error || "Could not submit review. Please try again.");
       }
     } catch {
       setError("Network error. Please try again.");
@@ -61,81 +87,125 @@ export default function ProjectReviews({
     setEmail("");
     setOrg("");
     setRating(5);
-    setHighlight("");
+    setHeadline("");
     setFeedback("");
     setSubmitted(false);
     setError("");
     setModalOpen(false);
   }
 
+  const avgRating =
+    projectReviews.length > 0
+      ? (
+          projectReviews.reduce((acc, r) => acc + (r.rating || 5), 0) / projectReviews.length
+        ).toFixed(1)
+      : null;
+
   return (
     <section id="reviews" style={{ scrollMarginTop: 100 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          flexWrap: "wrap",
+          gap: 16,
+          marginBottom: 20,
+        }}
+      >
         <div>
           <span className="eyebrow">CLIENT FEEDBACK &amp; RATINGS</span>
-          <h2 style={{ margin: "14px 0 0" }}>PROJECT REVIEWS</h2>
+          <h2 style={{ margin: "14px 0 0" }}>REVIEWS FOR {projectTitle.toUpperCase()}</h2>
+          {avgRating && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <div className="stars-wrap">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    size={15}
+                    className={i < Math.round(Number(avgRating)) ? "star-filled" : "star-empty"}
+                  />
+                ))}
+              </div>
+              <span style={{ font: "600 13px 'JetBrains Mono', monospace", color: "var(--accent)" }}>
+                {avgRating} / 5.0
+              </span>
+              <span style={{ font: "12px Inter, sans-serif", color: "var(--muted)" }}>
+                ({projectReviews.length} {projectReviews.length === 1 ? "review" : "reviews"})
+              </span>
+            </div>
+          )}
         </div>
+
         <button
           type="button"
           className="button secondary"
           onClick={() => setModalOpen(true)}
           style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
         >
-          <MessageSquarePlus size={16} /> RATE THIS PROJECT
+          <MessageSquarePlus size={16} /> WRITE A REVIEW FOR THIS PROJECT
         </button>
       </div>
 
+      {/* Reviews List */}
       {projectReviews.length > 0 ? (
         <div style={{ display: "grid", gap: 20, marginTop: 24 }}>
-          {projectReviews.map((r) => (
-            <div key={r.id} className="review-card">
-              <div className="review-card-top">
-                <div className="stars-wrap">
-                  {[...Array(r.rating)].map((_, s) => (
-                    <Star key={s} size={15} className="star-filled" />
-                  ))}
-                </div>
-                {r.verified && (
+          {projectReviews.map((r) => {
+            const dateStr = r.timestamp
+              ? new Date(r.timestamp).toLocaleDateString("en-US", {
+                  month: "short",
+                  year: "numeric",
+                })
+              : "Recent";
+
+            return (
+              <div key={r.id} className="review-card">
+                <div className="review-card-top">
+                  <div className="stars-wrap">
+                    {[...Array(r.rating || 5)].map((_, s) => (
+                      <Star key={s} size={15} className="star-filled" />
+                    ))}
+                  </div>
                   <span className="verified-pill">
                     <ShieldCheck size={12} /> VERIFIED CLIENT
                   </span>
-                )}
-              </div>
-
-              <h3 className="review-headline">&ldquo;{r.highlight}&rdquo;</h3>
-              <p className="review-body">{r.review}</p>
-
-              {r.metric && (
-                <div className="review-metric-tag">
-                  <span>KEY RESULT:</span> <strong>{r.metric}</strong>
                 </div>
-              )}
 
-              <div className="review-footer">
-                <div className="review-author">
-                  <strong>{r.clientName}</strong>
-                  <span>
-                    {r.clientRole}
-                    {r.companyOrOrg ? ` · ${r.companyOrOrg}` : ""}
+                <h3 className="review-headline">&ldquo;{r.headline}&rdquo;</h3>
+                <p className="review-body">{r.review}</p>
+
+                <div className="review-footer">
+                  <div className="review-author">
+                    <strong>{r.name}</strong>
+                    <span>{r.org || "Client / Collaborator"}</span>
+                  </div>
+                  <span
+                    className="review-project-name"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+                  >
+                    <Clock size={12} /> {dateStr}
                   </span>
                 </div>
-                <span className="review-project-name">{r.date}</span>
               </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+      ) : loading ? (
+        <div className="dash-empty" style={{ margin: "20px 0 0", padding: "32px 20px" }}>
+          <p style={{ color: "var(--muted)", margin: 0 }}>Loading reviews for {projectTitle}…</p>
         </div>
       ) : (
-        <div className="dash-empty" style={{ margin: "20px 0 0", padding: "40px 24px" }}>
+        <div className="dash-empty" style={{ margin: "20px 0 0", padding: "44px 24px" }}>
           <div style={{ display: "flex", gap: 5, color: "#f59e0b", marginBottom: 6 }}>
             {[...Array(5)].map((_, i) => (
               <Star key={i} size={18} fill="#f59e0b" />
             ))}
           </div>
           <h3 style={{ margin: "4px 0 6px", font: "600 20px 'Space Grotesk', sans-serif" }}>
-            NO REVIEWS YET FOR THIS SYSTEM
+            NO REVIEWS YET FOR THIS PROJECT
           </h3>
           <p style={{ color: "var(--muted)", maxWidth: 500, fontSize: 14, margin: "0 auto 18px", lineHeight: 1.6 }}>
-            Did you commission, deploy, or test the <strong>{projectTitle}</strong>? Leave verified feedback on build quality, reliability, and engineering execution.
+            Did you commission, deploy, or test the <strong>{projectTitle}</strong>? Be the first to leave verified feedback on build quality, reliability, and engineering execution.
           </p>
           <button
             type="button"
@@ -148,7 +218,7 @@ export default function ProjectReviews({
         </div>
       )}
 
-      {/* Project Review Modal */}
+      {/* Review Modal */}
       {modalOpen && (
         <div className="lightbox-backdrop" onClick={resetForm}>
           <div className="dash-modal review-modal" onClick={(e) => e.stopPropagation()}>
@@ -168,13 +238,13 @@ export default function ProjectReviews({
               <div style={{ padding: "28px 0 10px", textAlign: "center" }}>
                 <CheckCircle2 size={42} color="var(--success)" style={{ margin: "0 auto 16px" }} />
                 <h4 style={{ margin: "0 0 8px", font: "600 20px 'Space Grotesk', sans-serif" }}>
-                  FEEDBACK SUBMITTED!
+                  REVIEW PUBLISHED!
                 </h4>
                 <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.6, maxWidth: 380, margin: "0 auto 20px" }}>
-                  Thank you for rating <strong>{projectTitle}</strong>. Your feedback has been sent directly to the P-TECH engineering team.
+                  Thank you! Your review for <strong>{projectTitle}</strong> has been published and appears directly below this project.
                 </p>
                 <button type="button" className="button primary" onClick={resetForm}>
-                  CLOSE
+                  VIEW REVIEW
                 </button>
               </div>
             ) : (
@@ -235,7 +305,7 @@ export default function ProjectReviews({
                   </label>
 
                   <label>
-                    EMAIL (FOR VERIFICATION)
+                    EMAIL (OPTIONAL)
                     <input
                       type="email"
                       value={email}
@@ -259,8 +329,8 @@ export default function ProjectReviews({
                   HEADLINE / KEY TAKEAWAY
                   <input
                     type="text"
-                    value={highlight}
-                    onChange={(e) => setHighlight(e.target.value)}
+                    value={headline}
+                    onChange={(e) => setHeadline(e.target.value)}
                     placeholder="e.g. Rock-solid telemetry and fast deployment"
                     required
                   />

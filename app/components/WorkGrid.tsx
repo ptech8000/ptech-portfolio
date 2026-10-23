@@ -32,7 +32,12 @@ export default function WorkGrid() {
             <span className="project-category">{p.category}</span>
             <h2>{p.title}</h2>
             <p>{p.tags}</p>
-            <span className="case-link">VIEW CASE STUDY <ArrowUpRight size={15} /></span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+              <span className="case-link">VIEW CASE STUDY <ArrowUpRight size={15} /></span>
+              <span style={{ font: "500 10px 'JetBrains Mono', monospace", color: "var(--accent)" }}>
+                ★ REVIEWS
+              </span>
+            </div>
           </Link>
         ))}
       </div>

@@ -107,7 +107,12 @@ export default function Home() {
                   </div>
                   <div className="tag-row">{f.chips.map((c) => <span key={c}>{c}</span>)}</div>
                   <small className="flagship-note">{f.note}</small>
-                  <span className="case-link">VIEW CASE STUDY <ArrowUpRight size={16} /></span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, flexWrap: "wrap", gap: 8 }}>
+                    <span className="case-link">VIEW CASE STUDY <ArrowUpRight size={16} /></span>
+                    <span style={{ font: "500 11px 'JetBrains Mono', monospace", color: "var(--accent)" }}>
+                      ★ REVIEWS &amp; RATINGS →
+                    </span>
+                  </div>
                 </div>
               </Link>
             </Reveal>

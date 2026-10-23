@@ -283,3 +283,92 @@ export async function addMessage(entry: ContactMessage): Promise<void> {
   await saveMessages(updated);
 }
 
+// -------------------------------------------------------------
+// PROJECT REVIEWS STORAGE
+// -------------------------------------------------------------
+
+export type StoredReview = {
+  id: string;
+  projectSlug: string;
+  projectTitle: string;
+  rating: number; // 1 to 5
+  name: string;
+  email?: string;
+  org?: string;
+  headline: string;
+  review: string;
+  timestamp: string;
+};
+
+const REVIEWS_TMP_FILE = path.join(
+  process.platform === "win32" ? process.cwd() : "/tmp",
+  "ptech-project-reviews.jsonl"
+);
+let memoryReviews: StoredReview[] | null = null;
+
+export async function getStoredReviews(slug?: string): Promise<StoredReview[]> {
+  // 1. Try Upstash / Vercel KV first
+  if (KV_URL && KV_TOKEN) {
+    const raw = await kvCommand("get", "ptech_project_reviews");
+    if (typeof raw === "string" && raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          memoryReviews = parsed;
+          const filtered = slug ? parsed.filter((r) => r.projectSlug === slug) : parsed;
+          return filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        }
+      } catch {}
+    }
+  }
+
+  // 2. Return memory cache if populated
+  if (memoryReviews !== null) {
+    const filtered = slug ? memoryReviews.filter((r) => r.projectSlug === slug) : memoryReviews;
+    return filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  // 3. Check /tmp file
+  let loaded: StoredReview[] = [];
+  try {
+    if (existsSync(REVIEWS_TMP_FILE)) {
+      const raw = await readFile(REVIEWS_TMP_FILE, "utf8");
+      const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      for (const line of lines) {
+        try {
+          loaded.push(JSON.parse(line));
+        } catch {}
+      }
+    }
+  } catch {
+    loaded = [];
+  }
+
+  memoryReviews = loaded;
+  const filtered = slug ? loaded.filter((r) => r.projectSlug === slug) : loaded;
+  return filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+}
+
+export async function saveStoredReviews(reviews: StoredReview[]): Promise<boolean> {
+  memoryReviews = reviews;
+
+  if (KV_URL && KV_TOKEN) {
+    await kvCommand("set", "ptech_project_reviews", JSON.stringify(reviews));
+  }
+
+  const content = reviews.map((r) => JSON.stringify(r)).join("\n") + (reviews.length ? "\n" : "");
+  try {
+    await writeFile(REVIEWS_TMP_FILE, content, "utf8");
+  } catch {
+    // Read-only filesystem fallback
+  }
+
+  return true;
+}
+
+export async function addStoredReview(review: StoredReview): Promise<void> {
+  const current = await getStoredReviews();
+  const updated = [review, ...current.filter((r) => r.id !== review.id)];
+  await saveStoredReviews(updated);
+}
+
