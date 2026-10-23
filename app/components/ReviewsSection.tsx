@@ -91,92 +91,120 @@ export default function ReviewsSection() {
         </div>
       </Reveal>
 
-      {/* Trust & Rating Bar */}
-      <Reveal delay={60}>
-        <div className="review-summary-bar">
-          <div className="summary-score">
-            <span className="score-num">{reviewSummary.averageRating.toFixed(1)}</span>
-            <div className="stars-wrap" aria-label="5 out of 5 stars">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} size={16} className="star-filled" />
-              ))}
-            </div>
-            <span className="summary-label">OVERALL CLIENT RATING</span>
-          </div>
-
-          <div className="summary-divider" />
-
-          <div className="summary-metrics">
-            <div className="metric-pill">
-              <strong>{reviewSummary.onTimeDelivery}</strong>
-              <span>On-Time Delivery</span>
-            </div>
-            <div className="metric-pill">
-              <strong>20+</strong>
-              <span>Deployed Systems</span>
-            </div>
-            <div className="metric-pill">
-              <strong>100%</strong>
-              <span>Satisfaction Rate</span>
-            </div>
-            <div className="metric-pill">
-              <strong>Zero</strong>
-              <span>Hidden Cloud Fees</span>
-            </div>
-          </div>
-        </div>
-      </Reveal>
-
-      {/* Reviews Grid */}
-      <div className="reviews-grid">
-        {reviews.map((r, i) => (
-          <Reveal key={r.id} delay={i * 70}>
-            <div className="review-card">
-              <div className="review-card-top">
-                <div className="stars-wrap">
-                  {[...Array(r.rating)].map((_, s) => (
-                    <Star key={s} size={15} className="star-filled" />
+      {reviews.length > 0 ? (
+        <>
+          {/* Trust & Rating Bar */}
+          <Reveal delay={60}>
+            <div className="review-summary-bar">
+              <div className="summary-score">
+                <span className="score-num">{reviewSummary.averageRating.toFixed(1)}</span>
+                <div className="stars-wrap" aria-label="5 out of 5 stars">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={16} className="star-filled" />
                   ))}
                 </div>
-                {r.verified && (
-                  <span className="verified-pill">
-                    <ShieldCheck size={12} /> VERIFIED CLIENT
-                  </span>
-                )}
+                <span className="summary-label">OVERALL CLIENT RATING</span>
               </div>
 
-              <h3 className="review-headline">&ldquo;{r.highlight}&rdquo;</h3>
+              <div className="summary-divider" />
 
-              <p className="review-body">{r.review}</p>
-
-              {r.metric && (
-                <div className="review-metric-tag">
-                  <span>KEY RESULT:</span> <strong>{r.metric}</strong>
+              <div className="summary-metrics">
+                <div className="metric-pill">
+                  <strong>{reviewSummary.onTimeDelivery}</strong>
+                  <span>On-Time Delivery</span>
                 </div>
-              )}
-
-              <div className="review-footer">
-                <div className="review-author">
-                  <strong>{r.clientName}</strong>
-                  <span>
-                    {r.clientRole}
-                    {r.companyOrOrg ? ` · ${r.companyOrOrg}` : ""}
-                  </span>
+                <div className="metric-pill">
+                  <strong>20+</strong>
+                  <span>Deployed Systems</span>
                 </div>
-
-                {r.projectSlug ? (
-                  <Link href={`/work/${r.projectSlug}`} className="review-project-link">
-                    <span>{r.projectName}</span>
-                    <ArrowUpRight size={14} />
-                  </Link>
-                ) : (
-                  <span className="review-project-name">{r.projectName}</span>
-                )}
+                <div className="metric-pill">
+                  <strong>100%</strong>
+                  <span>Satisfaction Rate</span>
+                </div>
+                <div className="metric-pill">
+                  <strong>Zero</strong>
+                  <span>Hidden Cloud Fees</span>
+                </div>
               </div>
             </div>
           </Reveal>
-        ))}
-      </div>
+
+          {/* Reviews Grid */}
+          <div className="reviews-grid">
+            {reviews.map((r, i) => (
+              <Reveal key={r.id} delay={i * 70}>
+                <div className="review-card">
+                  <div className="review-card-top">
+                    <div className="stars-wrap">
+                      {[...Array(r.rating)].map((_, s) => (
+                        <Star key={s} size={15} className="star-filled" />
+                      ))}
+                    </div>
+                    {r.verified && (
+                      <span className="verified-pill">
+                        <ShieldCheck size={12} /> VERIFIED CLIENT
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="review-headline">&ldquo;{r.highlight}&rdquo;</h3>
+
+                  <p className="review-body">{r.review}</p>
+
+                  {r.metric && (
+                    <div className="review-metric-tag">
+                      <span>KEY RESULT:</span> <strong>{r.metric}</strong>
+                    </div>
+                  )}
+
+                  <div className="review-footer">
+                    <div className="review-author">
+                      <strong>{r.clientName}</strong>
+                      <span>
+                        {r.clientRole}
+                        {r.companyOrOrg ? ` · ${r.companyOrOrg}` : ""}
+                      </span>
+                    </div>
+
+                    {r.projectSlug ? (
+                      <Link href={`/work/${r.projectSlug}`} className="review-project-link">
+                        <span>{r.projectName}</span>
+                        <ArrowUpRight size={14} />
+                      </Link>
+                    ) : (
+                      <span className="review-project-name">{r.projectName}</span>
+                    )}
+                  </div>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </>
+      ) : (
+        <Reveal delay={60}>
+          <div className="dash-empty" style={{ margin: "28px 0 0", padding: "52px 24px" }}>
+            <div style={{ display: "flex", gap: 6, color: "#f59e0b", marginBottom: 8 }}>
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} size={20} fill="#f59e0b" />
+              ))}
+            </div>
+            <h3 style={{ margin: "4px 0 8px", font: "600 22px 'Space Grotesk', sans-serif" }}>
+              BE THE FIRST TO LEAVE A REVIEW
+            </h3>
+            <p style={{ color: "var(--muted)", maxWidth: 520, fontSize: 15, margin: "0 auto 22px", lineHeight: 1.6 }}>
+              Have we built an embedded system, robotics prototype, IoT device, or 3D enclosure for your project? Share your experience and rate our service below.
+            </p>
+            <button
+              type="button"
+              className="button primary"
+              onClick={() => setModalOpen(true)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8 }}
+            >
+              <MessageSquarePlus size={16} /> LEAVE PROJECT FEEDBACK
+            </button>
+          </div>
+        </Reveal>
+      )}
 
       {/* Review Submission Modal */}
       {modalOpen && (
