@@ -109,6 +109,119 @@ export async function verifyRecoveryKey(key: string): Promise<boolean> {
   return clean.toLowerCase() === master.toLowerCase();
 }
 
+// -------------------------------------------------------------
+// SECURE SESSION TOKEN & CRYPTOGRAPHIC AUTHENTICATION
+// -------------------------------------------------------------
+
+export function getSecretKey(): string {
+  return (process.env.ADMIN_RECOVERY_KEY || DEFAULT_MASTER_RECOVERY_KEY || "PTECH-RECOVERY-2026").trim();
+}
+
+export function hmacSha256(data: string, secret?: string): string {
+  const key = secret || getSecretKey();
+  return crypto.createHmac("sha256", key).update(data.trim()).digest("hex");
+}
+
+export function generateAdminSessionToken(passcode: string = ""): string {
+  const secret = getSecretKey();
+  const payload = {
+    sub: "admin",
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+    nonce: crypto.randomBytes(8).toString("hex"),
+  };
+  const str = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = crypto.createHmac("sha256", secret).update(str).digest("base64url");
+  return `${str}.${sig}`;
+}
+
+export function verifyAdminSessionToken(token: string): boolean {
+  if (!token || typeof token !== "string") return false;
+  const parts = token.trim().split(".");
+  if (parts.length !== 2) return false;
+  const [str, sig] = parts;
+  const secret = getSecretKey();
+  const expectedSig = crypto.createHmac("sha256", secret).update(str).digest("base64url");
+  if (sig !== expectedSig) return false;
+
+  try {
+    const payload = JSON.parse(Buffer.from(str, "base64url").toString("utf8"));
+    if (payload.exp && Date.now() > payload.exp) {
+      return false; // expired
+    }
+    return payload.sub === "admin";
+  } catch {
+    return false;
+  }
+}
+
+export async function verifyAdminPasscode(
+  candidate: string,
+  clientHash?: string
+): Promise<{ valid: boolean; token?: string; hash?: string }> {
+  const clean = candidate.trim();
+  if (!clean) return { valid: false };
+
+  // 1. Check if candidate is already a valid session token
+  if (verifyAdminSessionToken(clean)) {
+    return {
+      valid: true,
+      token: clean,
+      hash: hmacSha256(clean),
+    };
+  }
+
+  // 2. Check Master Recovery Key
+  if (await verifyRecoveryKey(clean)) {
+    return {
+      valid: true,
+      token: generateAdminSessionToken(clean),
+      hash: hmacSha256(clean),
+    };
+  }
+
+  // 3. Check actual server passcode (env or KV or file or default)
+  const actual = await getAdminPasscode();
+  if (clean === actual) {
+    return {
+      valid: true,
+      token: generateAdminSessionToken(clean),
+      hash: hmacSha256(clean),
+    };
+  }
+
+  // 4. Check client-provided HMAC hash proof (if candidate matches hash created with SERVER_SECRET)
+  if (clientHash && typeof clientHash === "string") {
+    const computed = hmacSha256(clean);
+    if (computed.toLowerCase() === clientHash.trim().toLowerCase()) {
+      return {
+        valid: true,
+        token: generateAdminSessionToken(clean),
+        hash: computed,
+      };
+    }
+  }
+
+  return { valid: false };
+}
+
+export async function isAuthorizedRequest(req: Request): Promise<boolean> {
+  const key = (req.headers.get("x-admin-key") ?? "").trim();
+  const token = (req.headers.get("x-admin-token") ?? "").trim();
+  const clientHash = (req.headers.get("x-admin-hash") ?? "").trim();
+
+  // A. Check signed session token
+  if (token && verifyAdminSessionToken(token)) return true;
+  if (key && verifyAdminSessionToken(key)) return true;
+
+  // B. Check candidate key via verifyAdminPasscode
+  if (key) {
+    const res = await verifyAdminPasscode(key, clientHash);
+    if (res.valid) return true;
+  }
+
+  return false;
+}
+
 type ResetOtp = {
   code: string;
   expiresAt: number;

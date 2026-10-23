@@ -8,16 +8,11 @@ import {
   addMessage,
   getAdminPasscode,
   StoredReview,
+  isAuthorizedRequest,
 } from "../../lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-async function isAuthorized(req: Request) {
-  const key = req.headers.get("x-admin-key") ?? "";
-  const passcode = await getAdminPasscode();
-  return Boolean(key && key === passcode);
-}
 
 export async function GET(req: Request) {
   try {
@@ -25,7 +20,7 @@ export async function GET(req: Request) {
     const slug = searchParams.get("slug") || undefined;
     const all = searchParams.get("all") === "true";
 
-    const authorized = await isAuthorized(req);
+    const authorized = await isAuthorizedRequest(req);
     const includePending = Boolean(all && authorized);
 
     const reviews = await getStoredReviews(slug, includePending);
@@ -75,7 +70,7 @@ export async function POST(req: Request) {
     const id = crypto.randomBytes(6).toString("hex");
     const timestamp = new Date().toISOString();
 
-    const authorized = await isAuthorized(req);
+    const authorized = await isAuthorizedRequest(req);
 
     // Reviews submitted by visitors require admin approval; admin submissions are auto-approved
     const status: StoredReview["status"] = authorized ? "approved" : "pending";
@@ -124,7 +119,7 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  if (!(await isAuthorized(req))) {
+  if (!(await isAuthorizedRequest(req))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -145,7 +140,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!(await isAuthorized(req))) {
+  if (!(await isAuthorizedRequest(req))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

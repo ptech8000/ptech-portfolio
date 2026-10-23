@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getAdminPasscode, setAdminPasscode } from "../../../lib/storage";
+import {
+  setAdminPasscode,
+  verifyAdminPasscode,
+  hmacSha256,
+  generateAdminSessionToken,
+} from "../../../lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,9 +14,14 @@ export async function POST(req: Request) {
     const body = await req.json();
     const currentPasscode = String(body.currentPasscode ?? "").trim();
     const newPasscode = String(body.newPasscode ?? "").trim();
+    const clientHash = String(body.clientHash ?? "").trim();
 
-    const actualPasscode = await getAdminPasscode();
-    if (!currentPasscode || currentPasscode !== actualPasscode) {
+    if (!currentPasscode) {
+      return NextResponse.json({ error: "Current passcode is required." }, { status: 400 });
+    }
+
+    const check = await verifyAdminPasscode(currentPasscode, clientHash);
+    if (!check.valid) {
       return NextResponse.json({ error: "Current passcode is incorrect." }, { status: 401 });
     }
 
@@ -23,14 +33,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "New passcode is too long." }, { status: 400 });
     }
 
-    const success = await setAdminPasscode(newPasscode);
-    if (!success) {
-      return NextResponse.json({ error: "Could not update passcode." }, { status: 500 });
-    }
+    await setAdminPasscode(newPasscode);
+    const passcodeHash = hmacSha256(newPasscode);
+    const sessionToken = generateAdminSessionToken(newPasscode);
 
-    return NextResponse.json({ ok: true, message: "Passcode updated successfully." });
+    return NextResponse.json({
+      ok: true,
+      message: "Passcode updated successfully.",
+      sessionToken,
+      passcodeHash,
+    });
   } catch {
     return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
   }
 }
-

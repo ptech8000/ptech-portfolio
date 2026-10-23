@@ -6,6 +6,7 @@ import {
   getMessages,
   saveMessages,
   addMessage,
+  isAuthorizedRequest,
 } from "../../lib/storage";
 
 export const runtime = "nodejs";
@@ -29,14 +30,8 @@ function limited(ip: string) {
   return recent.length > MAX_PER_WINDOW;
 }
 
-async function isAuthorized(req: Request) {
-  const key = req.headers.get("x-admin-key") ?? "";
-  const passcode = await getAdminPasscode();
-  return Boolean(key && key === passcode);
-}
-
 export async function GET(req: Request) {
-  if (!(await isAuthorized(req))) {
+  if (!(await isAuthorizedRequest(req))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const messages = await getMessages();
@@ -44,7 +39,7 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  if (!(await isAuthorized(req))) {
+  if (!(await isAuthorizedRequest(req))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {
@@ -69,7 +64,7 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  if (!(await isAuthorized(req))) {
+  if (!(await isAuthorizedRequest(req))) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {

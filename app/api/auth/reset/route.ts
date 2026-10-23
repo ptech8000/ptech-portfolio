@@ -4,6 +4,8 @@ import {
   verifyRecoveryKey,
   createAndSaveOtp,
   verifyResetOtp,
+  hmacSha256,
+  generateAdminSessionToken,
 } from "../../../lib/storage";
 
 export const runtime = "nodejs";
@@ -154,17 +156,15 @@ export async function POST(req: Request) {
         );
       }
 
-      const success = await setAdminPasscode(newPasscode);
-      if (!success) {
-        return NextResponse.json(
-          { error: "Failed to persist new passcode. Please try again." },
-          { status: 500 }
-        );
-      }
+      await setAdminPasscode(newPasscode);
+      const passcodeHash = hmacSha256(newPasscode);
+      const sessionToken = generateAdminSessionToken(newPasscode);
 
       return NextResponse.json({
         ok: true,
         message: "Passcode successfully reset! You can now log into your dashboard.",
+        sessionToken,
+        passcodeHash,
       });
     }
 

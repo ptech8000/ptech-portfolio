@@ -68,53 +68,120 @@ export default function DashboardPage() {
   const [sendingCode, setSendingCode] = useState(false);
   const [codeSentMessage, setCodeSentMessage] = useState("");
 
-  const fetchMessages = useCallback(async (key: string) => {
-    setLoading(true);
-    setAuthError("");
-    try {
-      const [resContact, resReviews] = await Promise.all([
-        fetch("/api/contact", {
-          headers: { "x-admin-key": key },
-          cache: "no-store",
-        }),
-        fetch("/api/reviews?all=true", {
-          headers: { "x-admin-key": key },
-          cache: "no-store",
-        }),
-      ]);
+  const getAdminHeaders = useCallback(
+    (extra: Record<string, string> = {}) => {
+      const token =
+        (typeof window !== "undefined"
+          ? sessionStorage.getItem("ptech_admin_token") || localStorage.getItem("ptech_admin_token")
+          : null) ||
+        savedKey ||
+        "";
+      const hash =
+        (typeof window !== "undefined" ? localStorage.getItem("ptech_admin_hash") : null) || "";
+      const rawKey =
+        (typeof window !== "undefined"
+          ? sessionStorage.getItem("ptech_admin_key") || localStorage.getItem("ptech_admin_key")
+          : null) ||
+        savedKey ||
+        "";
+      return {
+        "x-admin-key": rawKey || token,
+        "x-admin-token": token,
+        "x-admin-hash": hash,
+        ...extra,
+      };
+    },
+    [savedKey]
+  );
 
-      if (resContact.status === 401) {
-        setAuthError("Invalid admin passcode.");
-        setSavedKey(null);
-        sessionStorage.removeItem("ptech_admin_key");
+  const fetchMessages = useCallback(
+    async (activeKeyOrToken?: string) => {
+      setLoading(true);
+      setAuthError("");
+
+      const token =
+        activeKeyOrToken ||
+        savedKey ||
+        (typeof window !== "undefined"
+          ? sessionStorage.getItem("ptech_admin_token") ||
+            localStorage.getItem("ptech_admin_token") ||
+            sessionStorage.getItem("ptech_admin_key") ||
+            localStorage.getItem("ptech_admin_key")
+          : null) ||
+        "";
+
+      const hash =
+        (typeof window !== "undefined" ? localStorage.getItem("ptech_admin_hash") : null) || "";
+
+      if (!token) {
         setLoading(false);
         return;
       }
 
-      const dataContact = await resContact.json();
-      if (Array.isArray(dataContact.messages)) {
-        setMessages(dataContact.messages);
-        setSavedKey(key);
-        sessionStorage.setItem("ptech_admin_key", key);
-      }
+      try {
+        const headers: Record<string, string> = {
+          "x-admin-key": token,
+          "x-admin-token": token,
+          "x-admin-hash": hash,
+        };
 
-      if (resReviews.ok) {
-        const dataRev = await resReviews.json();
-        if (Array.isArray(dataRev.reviews)) {
-          setAdminReviews(dataRev.reviews);
+        const [resContact, resReviews] = await Promise.all([
+          fetch("/api/contact", {
+            headers,
+            cache: "no-store",
+          }),
+          fetch("/api/reviews?all=true", {
+            headers,
+            cache: "no-store",
+          }),
+        ]);
+
+        if (resContact.status === 401) {
+          setAuthError("Session expired or invalid passcode.");
+          setSavedKey(null);
+          if (typeof window !== "undefined") {
+            sessionStorage.removeItem("ptech_admin_key");
+            sessionStorage.removeItem("ptech_admin_token");
+          }
+          setLoading(false);
+          return;
         }
+
+        const dataContact = await resContact.json();
+        if (Array.isArray(dataContact.messages)) {
+          setMessages(dataContact.messages);
+          setSavedKey(token);
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("ptech_admin_key", token);
+            sessionStorage.setItem("ptech_admin_token", token);
+          }
+        }
+
+        if (resReviews.ok) {
+          const dataRev = await resReviews.json();
+          if (Array.isArray(dataRev.reviews)) {
+            setAdminReviews(dataRev.reviews);
+          }
+        }
+      } catch {
+        setAuthError("Could not reach the server.");
+      } finally {
+        setLoading(false);
       }
-    } catch {
-      setAuthError("Could not reach the server.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    [savedKey]
+  );
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("ptech_admin_key");
-    if (stored) {
-      fetchMessages(stored);
+    if (typeof window === "undefined") return;
+    const token =
+      sessionStorage.getItem("ptech_admin_token") || localStorage.getItem("ptech_admin_token");
+    const stored =
+      sessionStorage.getItem("ptech_admin_key") || localStorage.getItem("ptech_admin_key");
+    const keyToUse = token || stored;
+    if (keyToUse) {
+      setSavedKey(keyToUse);
+      fetchMessages(keyToUse);
     }
   }, [fetchMessages]);
 
@@ -128,14 +195,64 @@ export default function DashboardPage() {
 
   async function onLogin(e: React.FormEvent) {
     e.preventDefault();
-    await fetchMessages(passcode.trim());
+    setAuthError("");
+    const clean = passcode.trim();
+    if (!clean) {
+      setAuthError("Please enter your admin passcode.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const clientHash =
+        typeof window !== "undefined" ? localStorage.getItem("ptech_admin_hash") || "" : "";
+
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passcode: clean, clientHash }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setAuthError(data.error || "Invalid admin passcode.");
+        setLoading(false);
+        return;
+      }
+
+      const activeToken = data.token || clean;
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("ptech_admin_token", activeToken);
+        localStorage.setItem("ptech_admin_token", activeToken);
+        sessionStorage.setItem("ptech_admin_key", clean);
+        localStorage.setItem("ptech_admin_key", clean);
+        if (data.passcodeHash) {
+          localStorage.setItem("ptech_admin_hash", data.passcodeHash);
+        }
+      }
+
+      setSavedKey(activeToken);
+      setPasscode("");
+      await fetchMessages(activeToken);
+    } catch {
+      setAuthError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function onLogout() {
-    sessionStorage.removeItem("ptech_admin_key");
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("ptech_admin_key");
+      sessionStorage.removeItem("ptech_admin_token");
+      localStorage.removeItem("ptech_admin_key");
+      localStorage.removeItem("ptech_admin_token");
+      // Keep ptech_admin_hash in localStorage so they can re-login with their customized passcode
+    }
     setSavedKey(null);
     setPasscode("");
     setMessages([]);
+    setAdminReviews([]);
   }
 
   async function updateStatus(id: string, status: ContactMessage["status"]) {
@@ -146,7 +263,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch("/api/contact", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-admin-key": savedKey },
+        headers: getAdminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ id, status }),
       });
       if (res.ok) {
@@ -167,7 +284,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch("/api/contact", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-admin-key": savedKey },
+        headers: getAdminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ markAllRead: true }),
       });
       if (res.ok) {
@@ -187,7 +304,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch(`/api/contact?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
-        headers: { "x-admin-key": savedKey },
+        headers: getAdminHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -204,7 +321,7 @@ export default function DashboardPage() {
     try {
       await fetch("/api/reviews", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-admin-key": savedKey },
+        headers: getAdminHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ id, status: newStatus }),
       });
     } catch {
@@ -219,7 +336,7 @@ export default function DashboardPage() {
     try {
       await fetch(`/api/reviews?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
-        headers: { "x-admin-key": savedKey },
+        headers: getAdminHeaders(),
       });
     } catch {
       fetchMessages(savedKey);
@@ -242,12 +359,16 @@ export default function DashboardPage() {
 
     setPwLoading(true);
     try {
+      const clientHash =
+        typeof window !== "undefined" ? localStorage.getItem("ptech_admin_hash") || "" : "";
+
       const res = await fetch("/api/auth/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           currentPasscode: currentPw,
           newPasscode: newPw,
+          clientHash,
         }),
       });
       const data = await res.json();
@@ -255,8 +376,17 @@ export default function DashboardPage() {
         setPwError(data.error || "Failed to update passcode.");
       } else {
         setPwSuccess("Passcode updated successfully!");
-        setSavedKey(newPw);
-        sessionStorage.setItem("ptech_admin_key", newPw);
+        const token = data.sessionToken || newPw;
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("ptech_admin_token", token);
+          localStorage.setItem("ptech_admin_token", token);
+          sessionStorage.setItem("ptech_admin_key", newPw);
+          localStorage.setItem("ptech_admin_key", newPw);
+          if (data.passcodeHash) {
+            localStorage.setItem("ptech_admin_hash", data.passcodeHash);
+          }
+        }
+        setSavedKey(token);
         setCurrentPw("");
         setNewPw("");
         setConfirmPw("");
@@ -334,11 +464,24 @@ export default function DashboardPage() {
       } else {
         setForgotSuccess("Passcode updated! Unlocking dashboard…");
         const updatedKey = newForgotPw.trim();
-        setPasscode(updatedKey);
+        const token = data.sessionToken || updatedKey;
+
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("ptech_admin_token", token);
+          localStorage.setItem("ptech_admin_token", token);
+          sessionStorage.setItem("ptech_admin_key", updatedKey);
+          localStorage.setItem("ptech_admin_key", updatedKey);
+          if (data.passcodeHash) {
+            localStorage.setItem("ptech_admin_hash", data.passcodeHash);
+          }
+        }
+
+        setSavedKey(token);
+        setPasscode("");
         setTimeout(async () => {
           setShowForgotModal(false);
           setForgotSuccess("");
-          await fetchMessages(updatedKey);
+          await fetchMessages(token);
         }, 1200);
       }
     } catch {
