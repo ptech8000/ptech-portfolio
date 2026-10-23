@@ -1,8 +1,58 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Star, MessageSquarePlus, X, Send, CheckCircle2, ShieldCheck, Clock } from "lucide-react";
+import { Star, MessageSquarePlus, X, Send, CheckCircle2, ShieldCheck, Clock, Cpu, Zap, Timer, MessageSquare } from "lucide-react";
 import type { StoredReview } from "../lib/storage";
+
+function StarPicker({
+  label,
+  icon: Icon,
+  value,
+  onChange,
+}: {
+  label: string;
+  icon: React.ElementType;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const [hover, setHover] = useState(0);
+
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Icon size={14} color="var(--accent)" />
+        <span style={{ font: "500 12px 'Space Grotesk', sans-serif", color: "var(--text)" }}>{label}</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => onChange(star)}
+            onMouseEnter={() => setHover(star)}
+            onMouseLeave={() => setHover(0)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 2,
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <Star
+              size={18}
+              className={(hover || value) >= star ? "star-filled" : "star-empty"}
+            />
+          </button>
+        ))}
+        <span style={{ font: "600 11px 'JetBrains Mono', monospace", color: "var(--accent)", width: 22, textAlign: "right" }}>
+          {hover || value}★
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function ProjectReviews({
   projectSlug,
@@ -14,16 +64,25 @@ export default function ProjectReviews({
   const [projectReviews, setProjectReviews] = useState<StoredReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Form states
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [org, setOrg] = useState("");
-  const [rating, setRating] = useState(5);
-  const [hoverRating, setHoverRating] = useState(0);
+  const [hardwareRating, setHardwareRating] = useState(5);
+  const [firmwareRating, setFirmwareRating] = useState(5);
+  const [deliveryRating, setDeliveryRating] = useState(5);
+  const [communicationRating, setCommunicationRating] = useState(5);
   const [headline, setHeadline] = useState("");
   const [feedback, setFeedback] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState<"approved" | "pending">("pending");
   const [error, setError] = useState("");
+
+  const calculatedAvg = (
+    (hardwareRating + firmwareRating + deliveryRating + communicationRating) / 4
+  ).toFixed(1);
 
   useEffect(() => {
     let active = true;
@@ -53,7 +112,10 @@ export default function ProjectReviews({
       const payload = {
         projectSlug,
         projectTitle,
-        rating,
+        hardwareRating,
+        firmwareRating,
+        deliveryRating,
+        communicationRating,
         name: name.trim(),
         email: email.trim() || undefined,
         org: org.trim() || undefined,
@@ -70,7 +132,10 @@ export default function ProjectReviews({
       const data = await res.json();
 
       if (res.ok && data.review) {
-        setProjectReviews((prev) => [data.review, ...prev]);
+        setSubmissionStatus(data.status || "pending");
+        if (data.status === "approved") {
+          setProjectReviews((prev) => [data.review, ...prev]);
+        }
         setSubmitted(true);
       } else {
         setError(data.error || "Could not submit review. Please try again.");
@@ -86,7 +151,10 @@ export default function ProjectReviews({
     setName("");
     setEmail("");
     setOrg("");
-    setRating(5);
+    setHardwareRating(5);
+    setFirmwareRating(5);
+    setDeliveryRating(5);
+    setCommunicationRating(5);
     setHeadline("");
     setFeedback("");
     setSubmitted(false);
@@ -131,7 +199,7 @@ export default function ProjectReviews({
                 {avgRating} / 5.0
               </span>
               <span style={{ font: "12px Inter, sans-serif", color: "var(--muted)" }}>
-                ({projectReviews.length} {projectReviews.length === 1 ? "review" : "reviews"})
+                ({projectReviews.length} {projectReviews.length === 1 ? "verified review" : "verified reviews"})
               </span>
             </div>
           )}
@@ -162,9 +230,12 @@ export default function ProjectReviews({
               <div key={r.id} className="review-card">
                 <div className="review-card-top">
                   <div className="stars-wrap">
-                    {[...Array(r.rating || 5)].map((_, s) => (
+                    {[...Array(Math.round(r.rating || 5))].map((_, s) => (
                       <Star key={s} size={15} className="star-filled" />
                     ))}
+                    <span style={{ marginLeft: 6, font: "600 11px 'JetBrains Mono', monospace", color: "var(--accent)" }}>
+                      {Number(r.rating || 5).toFixed(1)}
+                    </span>
                   </div>
                   <span className="verified-pill">
                     <ShieldCheck size={12} /> VERIFIED CLIENT
@@ -173,6 +244,42 @@ export default function ProjectReviews({
 
                 <h3 className="review-headline">&ldquo;{r.headline}&rdquo;</h3>
                 <p className="review-body">{r.review}</p>
+
+                {/* Engineering Sub-Ratings Breakdown */}
+                {(r.hardwareRating || r.firmwareRating || r.deliveryRating || r.communicationRating) && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      padding: "8px 12px",
+                      font: "11px 'JetBrains Mono', monospace",
+                    }}
+                  >
+                    {r.hardwareRating && (
+                      <span style={{ color: "var(--muted)" }}>
+                        Hardware: <b style={{ color: "var(--accent)" }}>{r.hardwareRating}★</b>
+                      </span>
+                    )}
+                    {r.firmwareRating && (
+                      <span style={{ color: "var(--muted)" }}>
+                        Firmware: <b style={{ color: "var(--accent)" }}>{r.firmwareRating}★</b>
+                      </span>
+                    )}
+                    {r.deliveryRating && (
+                      <span style={{ color: "var(--muted)" }}>
+                        Delivery: <b style={{ color: "var(--accent)" }}>{r.deliveryRating}★</b>
+                      </span>
+                    )}
+                    {r.communicationRating && (
+                      <span style={{ color: "var(--muted)" }}>
+                        Support: <b style={{ color: "var(--accent)" }}>{r.communicationRating}★</b>
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className="review-footer">
                   <div className="review-author">
@@ -192,7 +299,7 @@ export default function ProjectReviews({
         </div>
       ) : loading ? (
         <div className="dash-empty" style={{ margin: "20px 0 0", padding: "32px 20px" }}>
-          <p style={{ color: "var(--muted)", margin: 0 }}>Loading reviews for {projectTitle}…</p>
+          <p style={{ color: "var(--muted)", margin: 0 }}>Loading verified reviews for {projectTitle}…</p>
         </div>
       ) : (
         <div className="dash-empty" style={{ margin: "20px 0 0", padding: "44px 24px" }}>
@@ -238,13 +345,15 @@ export default function ProjectReviews({
               <div style={{ padding: "28px 0 10px", textAlign: "center" }}>
                 <CheckCircle2 size={42} color="var(--success)" style={{ margin: "0 auto 16px" }} />
                 <h4 style={{ margin: "0 0 8px", font: "600 20px 'Space Grotesk', sans-serif" }}>
-                  REVIEW PUBLISHED!
+                  {submissionStatus === "approved" ? "REVIEW PUBLISHED!" : "FEEDBACK SUBMITTED FOR VERIFICATION!"}
                 </h4>
-                <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.6, maxWidth: 380, margin: "0 auto 20px" }}>
-                  Thank you! Your review for <strong>{projectTitle}</strong> has been published and appears directly below this project.
+                <p style={{ color: "var(--muted)", fontSize: 14, lineHeight: 1.6, maxWidth: 420, margin: "0 auto 20px" }}>
+                  {submissionStatus === "approved"
+                    ? `Thank you! Your verified review for ${projectTitle} is now live.`
+                    : `Thank you! Your review for ${projectTitle} has been submitted to the P-TECH dashboard and will be verified and published shortly.`}
                 </p>
                 <button type="button" className="button primary" onClick={resetForm}>
-                  VIEW REVIEW
+                  CLOSE
                 </button>
               </div>
             ) : (
@@ -258,38 +367,41 @@ export default function ProjectReviews({
                   </strong>
                 </div>
 
-                {/* Star Picker */}
+                {/* Engineering Sub-Ratings */}
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: "block", marginBottom: 8, font: "600 11px 'JetBrains Mono', monospace", color: "var(--faint)" }}>
-                    YOUR RATING (1 TO 5 STARS)
-                  </label>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRating(star)}
-                        onMouseEnter={() => setHoverRating(star)}
-                        onMouseLeave={() => setHoverRating(0)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: 4,
-                          display: "grid",
-                          placeItems: "center",
-                        }}
-                      >
-                        <Star
-                          size={24}
-                          className={(hoverRating || rating) >= star ? "star-filled" : "star-empty"}
-                        />
-                      </button>
-                    ))}
-                    <span style={{ marginLeft: 8, font: "600 13px 'JetBrains Mono', monospace", color: "var(--accent)" }}>
-                      {hoverRating || rating}.0 / 5.0
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <label style={{ margin: 0, font: "600 11px 'JetBrains Mono', monospace", color: "var(--faint)" }}>
+                      ENGINEERING RATINGS
+                    </label>
+                    <span style={{ font: "600 12px 'JetBrains Mono', monospace", color: "var(--accent)" }}>
+                      Overall: {calculatedAvg} / 5.0★
                     </span>
                   </div>
+
+                  <StarPicker
+                    label="Hardware & Build Quality"
+                    icon={Cpu}
+                    value={hardwareRating}
+                    onChange={setHardwareRating}
+                  />
+                  <StarPicker
+                    label="Firmware & System Reliability"
+                    icon={Zap}
+                    value={firmwareRating}
+                    onChange={setFirmwareRating}
+                  />
+                  <StarPicker
+                    label="Delivery & Turnaround Time"
+                    icon={Timer}
+                    value={deliveryRating}
+                    onChange={setDeliveryRating}
+                  />
+                  <StarPicker
+                    label="Communication & Support"
+                    icon={MessageSquare}
+                    value={communicationRating}
+                    onChange={setCommunicationRating}
+                  />
                 </div>
 
                 <div className="review-form-row">

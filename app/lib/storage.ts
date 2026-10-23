@@ -291,13 +291,18 @@ export type StoredReview = {
   id: string;
   projectSlug: string;
   projectTitle: string;
-  rating: number; // 1 to 5
+  rating: number; // 1 to 5 overall
+  hardwareRating?: number; // 1 to 5
+  firmwareRating?: number; // 1 to 5
+  deliveryRating?: number; // 1 to 5
+  communicationRating?: number; // 1 to 5
   name: string;
   email?: string;
   org?: string;
   headline: string;
   review: string;
   timestamp: string;
+  status: "approved" | "pending";
 };
 
 const REVIEWS_TMP_FILE = path.join(
@@ -306,7 +311,12 @@ const REVIEWS_TMP_FILE = path.join(
 );
 let memoryReviews: StoredReview[] | null = null;
 
-export async function getStoredReviews(slug?: string): Promise<StoredReview[]> {
+export async function getStoredReviews(
+  slug?: string,
+  includePending: boolean = false
+): Promise<StoredReview[]> {
+  let list: StoredReview[] = [];
+
   // 1. Try Upstash / Vercel KV first
   if (KV_URL && KV_TOKEN) {
     const raw = await kvCommand("get", "ptech_project_reviews");
@@ -314,38 +324,42 @@ export async function getStoredReviews(slug?: string): Promise<StoredReview[]> {
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
+          list = parsed;
           memoryReviews = parsed;
-          const filtered = slug ? parsed.filter((r) => r.projectSlug === slug) : parsed;
-          return filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         }
       } catch {}
     }
   }
 
   // 2. Return memory cache if populated
-  if (memoryReviews !== null) {
-    const filtered = slug ? memoryReviews.filter((r) => r.projectSlug === slug) : memoryReviews;
-    return filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  if (list.length === 0 && memoryReviews !== null) {
+    list = memoryReviews;
   }
 
   // 3. Check /tmp file
-  let loaded: StoredReview[] = [];
-  try {
-    if (existsSync(REVIEWS_TMP_FILE)) {
-      const raw = await readFile(REVIEWS_TMP_FILE, "utf8");
-      const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
-      for (const line of lines) {
-        try {
-          loaded.push(JSON.parse(line));
-        } catch {}
+  if (list.length === 0) {
+    try {
+      if (existsSync(REVIEWS_TMP_FILE)) {
+        const raw = await readFile(REVIEWS_TMP_FILE, "utf8");
+        const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
+        for (const line of lines) {
+          try {
+            list.push(JSON.parse(line));
+          } catch {}
+        }
       }
-    }
-  } catch {
-    loaded = [];
+    } catch {}
+    memoryReviews = list;
   }
 
-  memoryReviews = loaded;
-  const filtered = slug ? loaded.filter((r) => r.projectSlug === slug) : loaded;
+  let filtered = list;
+  if (slug) {
+    filtered = filtered.filter((r) => r.projectSlug === slug);
+  }
+  if (!includePending) {
+    filtered = filtered.filter((r) => r.status === "approved");
+  }
+
   return filtered.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
@@ -367,8 +381,23 @@ export async function saveStoredReviews(reviews: StoredReview[]): Promise<boolea
 }
 
 export async function addStoredReview(review: StoredReview): Promise<void> {
-  const current = await getStoredReviews();
+  const current = await getStoredReviews(undefined, true);
   const updated = [review, ...current.filter((r) => r.id !== review.id)];
   await saveStoredReviews(updated);
+}
+
+export async function updateReviewStatus(
+  id: string,
+  status: "approved" | "pending"
+): Promise<boolean> {
+  const current = await getStoredReviews(undefined, true);
+  const updated = current.map((r) => (r.id === id ? { ...r, status } : r));
+  return saveStoredReviews(updated);
+}
+
+export async function deleteStoredReview(id: string): Promise<boolean> {
+  const current = await getStoredReviews(undefined, true);
+  const updated = current.filter((r) => r.id !== id);
+  return saveStoredReviews(updated);
 }
 

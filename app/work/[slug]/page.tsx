@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowUpRight, Github, Play } from "lucide-react";
 import Visual from "../../components/Visual";
 import GalleryLightbox from "../../components/GalleryLightbox";
 import ProjectReviews from "../../components/ProjectReviews";
+import ProjectHeroRating from "../../components/ProjectHeroRating";
 import { projects, bySlug } from "../../data/projects";
 
 export function generateStaticParams() {
@@ -32,7 +33,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         <Link href="/work" className="back-link"><ArrowLeft size={15} /> WORK / PROJECTS</Link>
         <span className="eyebrow">{project.category}</span>
         <h1>{project.title.toUpperCase()}</h1><p>{project.summary}</p>
-        <span className="case-status">● {project.status}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 14, marginBottom: 6 }}>
+          <span className="case-status">● {project.status}</span>
+          <ProjectHeroRating projectSlug={project.slug} />
+        </div>
         {((project.repos && project.repos.length > 0) || project.videoUrl) && (
           <p className="case-repos">
             {project.videoUrl && (

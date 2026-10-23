@@ -18,7 +18,10 @@ import {
   KeyRound,
   X,
   AlertCircle,
+  Star,
+  ShieldCheck,
 } from "lucide-react";
+import type { StoredReview } from "../lib/storage";
 
 type ContactMessage = {
   id: string;
@@ -37,6 +40,7 @@ export default function DashboardPage() {
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [authError, setAuthError] = useState("");
   const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [adminReviews, setAdminReviews] = useState<StoredReview[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -68,22 +72,37 @@ export default function DashboardPage() {
     setLoading(true);
     setAuthError("");
     try {
-      const res = await fetch("/api/contact", {
-        headers: { "x-admin-key": key },
-        cache: "no-store",
-      });
-      if (res.status === 401) {
+      const [resContact, resReviews] = await Promise.all([
+        fetch("/api/contact", {
+          headers: { "x-admin-key": key },
+          cache: "no-store",
+        }),
+        fetch("/api/reviews?all=true", {
+          headers: { "x-admin-key": key },
+          cache: "no-store",
+        }),
+      ]);
+
+      if (resContact.status === 401) {
         setAuthError("Invalid admin passcode.");
         setSavedKey(null);
         sessionStorage.removeItem("ptech_admin_key");
         setLoading(false);
         return;
       }
-      const data = await res.json();
-      if (Array.isArray(data.messages)) {
-        setMessages(data.messages);
+
+      const dataContact = await resContact.json();
+      if (Array.isArray(dataContact.messages)) {
+        setMessages(dataContact.messages);
         setSavedKey(key);
         sessionStorage.setItem("ptech_admin_key", key);
+      }
+
+      if (resReviews.ok) {
+        const dataRev = await resReviews.json();
+        if (Array.isArray(dataRev.reviews)) {
+          setAdminReviews(dataRev.reviews);
+        }
       }
     } catch {
       setAuthError("Could not reach the server.");
@@ -174,6 +193,34 @@ export default function DashboardPage() {
         const data = await res.json();
         if (Array.isArray(data.messages)) setMessages(data.messages);
       }
+    } catch {
+      fetchMessages(savedKey);
+    }
+  }
+
+  async function toggleReviewApproval(id: string, newStatus: "approved" | "pending") {
+    if (!savedKey) return;
+    setAdminReviews((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)));
+    try {
+      await fetch("/api/reviews", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-key": savedKey },
+        body: JSON.stringify({ id, status: newStatus }),
+      });
+    } catch {
+      fetchMessages(savedKey);
+    }
+  }
+
+  async function deleteAdminReview(id: string) {
+    if (!savedKey) return;
+    if (!confirm("Are you sure you want to delete this review?")) return;
+    setAdminReviews((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await fetch(`/api/reviews?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "x-admin-key": savedKey },
+      });
     } catch {
       fetchMessages(savedKey);
     }
@@ -327,16 +374,10 @@ export default function DashboardPage() {
   const unreadCount = messages.filter((m) => m.status === "unread").length;
   const readCount = messages.filter((m) => m.status === "read").length;
   const repliedCount = messages.filter((m) => m.status === "replied").length;
-  const reviewCount = messages.filter(
-    (m) => m.topic.toLowerCase().includes("review") || m.topic.includes("★")
-  ).length;
+  const pendingReviewCount = adminReviews.filter((r) => r.status === "pending").length;
 
   const filtered = messages.filter((m) => {
-    if (filter === "reviews") {
-      if (!m.topic.toLowerCase().includes("review") && !m.topic.includes("★")) return false;
-    } else if (filter !== "all" && m.status !== filter) {
-      return false;
-    }
+    if (filter !== "all" && m.status !== filter) return false;
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return (
@@ -344,6 +385,18 @@ export default function DashboardPage() {
       m.email.toLowerCase().includes(q) ||
       m.topic.toLowerCase().includes(q) ||
       m.message.toLowerCase().includes(q)
+    );
+  });
+
+  const filteredReviews = adminReviews.filter((r) => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    return (
+      r.name.toLowerCase().includes(q) ||
+      (r.email && r.email.toLowerCase().includes(q)) ||
+      r.projectTitle.toLowerCase().includes(q) ||
+      r.headline.toLowerCase().includes(q) ||
+      r.review.toLowerCase().includes(q)
     );
   });
 
@@ -487,7 +540,11 @@ export default function DashboardPage() {
                     ["unread", "UNREAD", unreadCount],
                     ["read", "READ", readCount],
                     ["replied", "REPLIED", repliedCount],
-                    ["reviews", "★ REVIEWS", reviewCount],
+                    [
+                      "reviews",
+                      pendingReviewCount > 0 ? `★ REVIEWS (${pendingReviewCount} PENDING)` : "★ REVIEWS",
+                      adminReviews.length,
+                    ],
                   ] as const
                 ).map(([key, label, count]) => (
                   <button
@@ -512,8 +569,164 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Messages List */}
-            {filtered.length === 0 ? (
+            {/* Messages or Reviews List */}
+            {filter === "reviews" ? (
+              filteredReviews.length === 0 ? (
+                <div className="dash-empty">
+                  <Star size={32} />
+                  <h3>NO PROJECT REVIEWS FOUND</h3>
+                  <p>
+                    {adminReviews.length === 0
+                      ? "Reviews submitted from project pages will appear here for verification and approval."
+                      : "No reviews match your current search query."}
+                  </p>
+                </div>
+              ) : (
+                <div className="dash-list">
+                  {filteredReviews.map((r) => {
+                    const dateStr = new Date(r.timestamp).toLocaleString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+
+                    return (
+                      <article key={r.id} className="dash-msg-card">
+                        <div className="dash-msg-header">
+                          <div className="dash-msg-badges">
+                            {r.status === "approved" ? (
+                              <span className="dash-status-pill replied" style={{ color: "var(--success)" }}>
+                                ● APPROVED &amp; LIVE
+                              </span>
+                            ) : (
+                              <span
+                                className="dash-status-pill unread"
+                                style={{
+                                  color: "#f59e0b",
+                                  borderColor: "#f59e0b",
+                                  background: "rgba(245,158,11,0.1)",
+                                }}
+                              >
+                                ● PENDING VERIFICATION
+                              </span>
+                            )}
+                            <a
+                              href={`/work/${r.projectSlug}#reviews`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="exp-badge"
+                              style={{ margin: 0, color: "var(--accent)" }}
+                            >
+                              PROJECT: {r.projectTitle} ↗
+                            </a>
+                          </div>
+                          <span className="dash-msg-time">
+                            <Clock size={12} /> {dateStr}
+                          </span>
+                        </div>
+
+                        <div className="dash-msg-sender">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", flexWrap: "wrap", gap: 10 }}>
+                            <div>
+                              <h3 style={{ margin: "0 0 4px" }}>{r.name}</h3>
+                              <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                                {r.org || "Client"} {r.email ? ` · ${r.email}` : ""}
+                              </span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <div className="stars-wrap">
+                                {[...Array(Math.round(r.rating || 5))].map((_, s) => (
+                                  <Star key={s} size={15} className="star-filled" />
+                                ))}
+                              </div>
+                              <strong style={{ font: "600 14px 'JetBrains Mono', monospace", color: "var(--accent)" }}>
+                                {r.rating} / 5.0
+                              </strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Engineering Sub-Ratings Breakdown */}
+                        {(r.hardwareRating || r.firmwareRating || r.deliveryRating || r.communicationRating) && (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 12,
+                              background: "var(--bg)",
+                              border: "1px solid var(--border)",
+                              padding: "8px 12px",
+                              font: "11px 'JetBrains Mono', monospace",
+                            }}
+                          >
+                            {r.hardwareRating && (
+                              <span style={{ color: "var(--muted)" }}>
+                                Hardware: <b style={{ color: "var(--accent)" }}>{r.hardwareRating}★</b>
+                              </span>
+                            )}
+                            {r.firmwareRating && (
+                              <span style={{ color: "var(--muted)" }}>
+                                Firmware: <b style={{ color: "var(--accent)" }}>{r.firmwareRating}★</b>
+                              </span>
+                            )}
+                            {r.deliveryRating && (
+                              <span style={{ color: "var(--muted)" }}>
+                                Delivery: <b style={{ color: "var(--accent)" }}>{r.deliveryRating}★</b>
+                              </span>
+                            )}
+                            {r.communicationRating && (
+                              <span style={{ color: "var(--muted)" }}>
+                                Support: <b style={{ color: "var(--accent)" }}>{r.communicationRating}★</b>
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="dash-msg-body">
+                          <strong style={{ color: "var(--text)", display: "block", marginBottom: 6 }}>
+                            &ldquo;{r.headline}&rdquo;
+                          </strong>
+                          {r.review}
+                        </div>
+
+                        <div className="dash-msg-footer">
+                          {r.status === "pending" ? (
+                            <button
+                              type="button"
+                              className="button primary"
+                              onClick={() => toggleReviewApproval(r.id, "approved")}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                            >
+                              <CheckCircle2 size={15} /> APPROVE &amp; PUBLISH LIVE
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="button secondary"
+                              onClick={() => toggleReviewApproval(r.id, "pending")}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                            >
+                              <X size={15} /> UNPUBLISH / SET PENDING
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="button secondary dash-delete-btn"
+                            onClick={() => deleteAdminReview(r.id)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                          >
+                            <Trash2 size={15} /> DELETE REVIEW
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )
+            ) : filtered.length === 0 ? (
               <div className="dash-empty">
                 <Inbox size={32} />
                 <h3>NO MESSAGES FOUND</h3>
