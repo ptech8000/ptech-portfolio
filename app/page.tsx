@@ -4,6 +4,7 @@ import Nav from "./components/Nav";
 import Footer from "./components/Footer";
 import Visual from "./components/Visual";
 import Reveal from "./components/Reveal";
+import ReviewsSection from "./components/ReviewsSection";
 import { projects, flagships } from "./data/projects";
 
 const domains = [
@@ -207,6 +208,8 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <ReviewsSection />
 
       <section className="contact-section" id="contact">
         <div className="container contact-inner">

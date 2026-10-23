@@ -30,7 +30,7 @@ type ContactMessage = {
   status: "unread" | "read" | "replied";
 };
 
-type Filter = "all" | "unread" | "read" | "replied";
+type Filter = "all" | "unread" | "read" | "replied" | "reviews";
 
 export default function DashboardPage() {
   const [passcode, setPasscode] = useState("");
@@ -327,9 +327,16 @@ export default function DashboardPage() {
   const unreadCount = messages.filter((m) => m.status === "unread").length;
   const readCount = messages.filter((m) => m.status === "read").length;
   const repliedCount = messages.filter((m) => m.status === "replied").length;
+  const reviewCount = messages.filter(
+    (m) => m.topic.toLowerCase().includes("review") || m.topic.includes("★")
+  ).length;
 
   const filtered = messages.filter((m) => {
-    if (filter !== "all" && m.status !== filter) return false;
+    if (filter === "reviews") {
+      if (!m.topic.toLowerCase().includes("review") && !m.topic.includes("★")) return false;
+    } else if (filter !== "all" && m.status !== filter) {
+      return false;
+    }
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return (
@@ -480,6 +487,7 @@ export default function DashboardPage() {
                     ["unread", "UNREAD", unreadCount],
                     ["read", "READ", readCount],
                     ["replied", "REPLIED", repliedCount],
+                    ["reviews", "★ REVIEWS", reviewCount],
                   ] as const
                 ).map(([key, label, count]) => (
                   <button
@@ -539,6 +547,19 @@ export default function DashboardPage() {
                           <span className={`dash-status-pill ${m.status}`}>
                             ● {m.status.toUpperCase()}
                           </span>
+                          {(m.topic.toLowerCase().includes("review") || m.topic.includes("★")) && (
+                            <span
+                              style={{
+                                font: "600 10px 'JetBrains Mono', monospace",
+                                color: "#f59e0b",
+                                border: "1px solid rgba(245, 158, 11, 0.4)",
+                                background: "rgba(245, 158, 11, 0.1)",
+                                padding: "4px 8px",
+                              }}
+                            >
+                              ★ CLIENT REVIEW
+                            </span>
+                          )}
                           <span className="exp-badge" style={{ margin: 0 }}>
                             {m.topic}
                           </span>

@@ -751,3 +751,204 @@ a:hover .vis-icon { transform: scale(1.1) rotate(-3deg); }
   .dash-msg-footer .button, .dash-actions .button { width: 100%; justify-content: center; }
   .dash-actions { width: 100%; }
 }
+
+/* Reviews & Testimonials Section */
+.review-summary-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px 32px;
+  margin: 28px 0 40px;
+}
+.summary-score {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.score-num {
+  font: 700 38px/1 "Space Grotesk", sans-serif;
+  color: var(--text);
+  letter-spacing: -0.04em;
+}
+.stars-wrap {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.star-filled {
+  color: #f59e0b;
+  fill: #f59e0b;
+}
+.star-empty {
+  color: var(--faint);
+}
+.summary-label {
+  font: 600 11px "JetBrains Mono", monospace;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+.summary-divider {
+  width: 1px;
+  height: 48px;
+  background: var(--border);
+}
+.summary-metrics {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+.metric-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.metric-pill strong {
+  font: 700 20px "Space Grotesk", sans-serif;
+  color: var(--accent);
+}
+.metric-pill span {
+  font: 11px "JetBrains Mono", monospace;
+  color: var(--faint);
+  letter-spacing: 0.04em;
+}
+
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+}
+.review-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: transform .2s ease, border-color .2s ease;
+}
+.review-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+}
+.review-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.verified-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 10px "JetBrains Mono", monospace;
+  color: var(--success);
+  background: rgba(74, 222, 128, 0.08);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  padding: 3px 8px;
+  letter-spacing: 0.06em;
+}
+.review-headline {
+  margin: 0;
+  font: 600 19px/1.3 "Space Grotesk", sans-serif;
+  color: var(--text);
+}
+.review-body {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.65;
+  flex-grow: 1;
+}
+.review-metric-tag {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font: 11px "JetBrains Mono", monospace;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.review-metric-tag span {
+  color: var(--faint);
+}
+.review-metric-tag strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+.review-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.review-author {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.review-author strong {
+  font: 600 15px "Space Grotesk", sans-serif;
+  color: var(--text);
+}
+.review-author span {
+  font: 12px Inter, sans-serif;
+  color: var(--faint);
+}
+.review-project-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 500 11px "JetBrains Mono", monospace;
+  color: var(--accent);
+  border-bottom: 1px dotted var(--accent);
+  transition: opacity .2s;
+}
+.review-project-link:hover {
+  opacity: .8;
+}
+.review-project-name {
+  font: 500 11px "JetBrains Mono", monospace;
+  color: var(--muted);
+}
+.review-modal {
+  width: min(560px, calc(100% - 32px));
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.review-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .review-summary-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+    padding: 20px;
+  }
+  .summary-divider {
+    display: none;
+  }
+  .summary-metrics {
+    gap: 20px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .reviews-grid {
+    grid-template-columns: 1fr;
+  }
+  .review-form-row {
+    grid-template-columns: 1fr;
+  }
+}

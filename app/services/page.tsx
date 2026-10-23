@@ -162,6 +162,9 @@ export default function Services() {
             <Link className="button secondary" href="/contact">
               USE CONTACT FORM <ArrowUpRight size={16} />
             </Link>
+            <Link className="button secondary" href="/#reviews">
+              5.0★ CLIENT REVIEWS <ArrowUpRight size={16} />
+            </Link>
           </div>
         </div>
       </section>
